@@ -10,7 +10,7 @@ const Login = () => {
         email: "abc@ab.a",
         username: "aaa",
         password: "aaa",
-        role: "DONOR"
+        role: "ADMIN"
     };
 
     const onSubmit = (user) => {

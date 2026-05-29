@@ -12,53 +12,49 @@ import Signup from "../pages/auth/Signup";
 
 import Dashboard from "../pages/dashboard/Dashboard";
 
+import Users from "../pages/users/UsersPage";
+import Donors from "../pages/donors/Donors";
+import Waste from "../pages/waste/Waste";
+import Centers from "../pages/centers/Centers";
+import Reports from "../pages/reports/Reports";
+
 import ProtectedRoute from "../auth/ProtectedRoute";
 import AuthRoute from "../auth/AuthRoute";
 
 const CustomRoutes = () => {
+  return (
+    <Routes>
 
-    return (
-        <Routes>
+      {/* MAIN WEBSITE */}
+      <Route element={<Mainlayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/contact" element={<Contact />} />
+      </Route>
 
-            {/* MAIN WEBSITE */}
-            <Route element={<Mainlayout />}>
+      {/* AUTH */}
+      <Route element={<AuthRoute />}>
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+        </Route>
+      </Route>
 
-                <Route path="/" element={<Home />} />
+      {/* DASHBOARD (PROTECTED) */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
 
-                <Route path="/contact" element={<Contact />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/donors" element={<Donors />} />
+          <Route path="/waste" element={<Waste />} />
+          <Route path="/centers" element={<Centers />} />
+          <Route path="/reports" element={<Reports />} />
 
-            </Route>
+        </Route>
+      </Route>
 
-            {/* AUTH */}
-            {/* AUTH ROUTES */}
-            <Route element={<AuthRoute />}>
-
-                <Route element={<AuthLayout />}>
-
-                    <Route path="/login" element={<Login />} />
-
-                    <Route path="/signup" element={<Signup />} />
-
-                </Route>
-
-            </Route>
-
-            {/* PROTECTED ROUTES */}
-            <Route element={<ProtectedRoute />}>
-
-                <Route element={<DashboardLayout />}>
-
-                    <Route
-                        path="/dashboard"
-                        element={<Dashboard />}
-                    />
-
-                </Route>
-
-            </Route>
-
-        </Routes>
-    );
+    </Routes>
+  );
 };
 
 export default CustomRoutes;
