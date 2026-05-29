@@ -9,18 +9,32 @@ const Login = () => {
     const dummyUser = {
         email: "abc@ab.a",
         username: "aaa",
-        password: "aaa"
-    }
+        password: "aaa",
+        role: "DONOR"
+    };
 
     const onSubmit = (user) => {
 
-        const isValidUser = user.identifier === dummyUser.username || user.identifier === dummyUser.email;
+        const isValidUser =
+            user.identifier === dummyUser.username ||
+            user.identifier === dummyUser.email;
 
-        const isValidPassword = user.password === dummyUser.password;
-        if (isValidUser && isValidPassword)
-            navigate("/dashboard")
-        else
-            alert("Invalid email or password")
+        const isValidPassword =
+            user.password === dummyUser.password;
+
+        if (isValidUser && isValidPassword) {
+
+            // Save logged-in user
+            localStorage.setItem(
+                "user",
+                JSON.stringify(dummyUser)
+            );
+
+            navigate("/dashboard");
+
+        } else {
+            alert("Invalid email or password");
+        }
     };
 
     const handleGoogleLogin = () => {
@@ -104,8 +118,8 @@ const Login = () => {
                         <FcGoogle />
                         <span>Continue with Google</span>
                     </button>
-                    
-                     <div className="flex justify-center gap-2 cursor-default text-sm my-3 mb-1">
+
+                    <div className="flex justify-center gap-2 cursor-default text-sm my-3 mb-1">
                         <p>New to Food Waste Management System?</p>
                         <Link to="/signup" className="text-blue-600 cursor-pointer hover:underline">
                             Create an account
