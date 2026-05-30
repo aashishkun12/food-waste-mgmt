@@ -13,8 +13,8 @@ import Signup from "../pages/auth/Signup";
 import Dashboard from "../pages/dashboard/Dashboard";
 
 import Users from "../pages/users/UsersPage";
-import Donors from "../pages/donors/Donors";
-import Waste from "../pages/waste/Waste";
+import Donors from "../pages/donors/FoodDonorsPage";
+import Waste from "../pages/waste/WasteChart";
 import Centers from "../pages/centers/Centers";
 import Reports from "../pages/reports/Reports";
 

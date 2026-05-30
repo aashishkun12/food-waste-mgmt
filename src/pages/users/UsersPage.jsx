@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Table from "../../components/ui/Table";
 
 const roleOptions = ["DONOR", "OPERATOR"];
 
@@ -30,7 +31,6 @@ const UsersPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // fake API fetch
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -44,7 +44,6 @@ const UsersPage = () => {
     }, 800);
   };
 
-  // change role (local only)
   const handleRoleChange = (userId, role) => {
     setUsers((prev) =>
       prev.map((u) =>
@@ -53,7 +52,6 @@ const UsersPage = () => {
     );
   };
 
-  // toggle status (local only)
   const toggleStatus = (userId) => {
     setUsers((prev) =>
       prev.map((u) =>
@@ -64,6 +62,72 @@ const UsersPage = () => {
     );
   };
 
+  const columns = [
+    {
+      key: "username",
+      label: "Username",
+      width: "w-1/5",
+    },
+    {
+      key: "email",
+      label: "Email",
+      width: "w-1/4",
+    },
+    {
+      key: "role",
+      label: "Role",
+      width: "w-1/5",
+      render: (user) => (
+        <select
+          value={user.role}
+          onChange={(e) =>
+            handleRoleChange(user.id, e.target.value)
+          }
+          className="border rounded px-2 py-1 text-sm w-full"
+        >
+          {roleOptions.map((role) => (
+            <option key={role} value={role}>
+              {role}
+            </option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "active",
+      label: "Status",
+      width: "w-32",
+      render: (user) => (
+        <span
+          className={`inline-flex items-center justify-center w-20 px-2 py-1 text-xs font-semibold rounded-full ${
+            user.active
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+          }`}
+        >
+          {user.active ? "Active" : "Inactive"}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      width: "w-36",
+      render: (user) => (
+        <button
+          onClick={() => toggleStatus(user.id)}
+          className={`w-28 px-3 py-1 text-sm rounded text-white ${
+            user.active
+              ? "bg-red-500 hover:bg-red-600"
+              : "bg-green-500 hover:bg-green-600"
+          }`}
+        >
+          {user.active ? "Deactivate" : "Activate"}
+        </button>
+      ),
+    },
+  ];
+
   return (
     <div className="p-6">
       <h2 className="text-2xl font-semibold mb-4">
@@ -71,90 +135,9 @@ const UsersPage = () => {
       </h2>
 
       {loading ? (
-        <p className="text-gray-500">Loading users...</p>
-      ) : users.length === 0 ? (
-        <p className="text-gray-500">No users found.</p>
+        <p>Loading users...</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-3 border-b">Username</th>
-                <th className="p-3 border-b">Email</th>
-                <th className="p-3 border-b">Role</th>
-                <th className="p-3 border-b">Status</th>
-                <th className="p-3 border-b">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {users.map((user) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-gray-50"
-                >
-                  <td className="p-3 border-b">
-                    {user.username}
-                  </td>
-
-                  <td className="p-3 border-b">
-                    {user.email}
-                  </td>
-
-                  <td className="p-3 border-b">
-                    <select
-                      value={user.role}
-                      onChange={(e) =>
-                        handleRoleChange(
-                          user.id,
-                          e.target.value
-                        )
-                      }
-                      className="border rounded px-2 py-1 text-sm"
-                    >
-                      {roleOptions.map((role) => (
-                        <option key={role} value={role}>
-                          {role}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-
-                  <td className="p-3 border-b">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {user.active
-                        ? "Active"
-                        : "Inactive"}
-                    </span>
-                  </td>
-
-                  <td className="p-3 border-b">
-                    <button
-                      onClick={() =>
-                        toggleStatus(user.id)
-                      }
-                      className={`px-3 py-1 text-sm rounded text-white ${
-                        user.active
-                          ? "bg-red-500 hover:bg-red-600"
-                          : "bg-green-500 hover:bg-green-600"
-                      }`}
-                    >
-                      {user.active
-                        ? "Deactivate"
-                        : "Activate"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table columns={columns} data={users} />
       )}
     </div>
   );
