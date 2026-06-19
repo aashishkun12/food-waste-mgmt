@@ -14,8 +14,9 @@ import Dashboard from "../pages/dashboard/Dashboard";
 
 import Users from "../pages/users/UsersPage";
 import Donors from "../pages/donors/FoodDonorsPage";
-import Waste from "../pages/waste/WasteChart";
+import Waste from "../pages/waste/WasteItemsPage";
 import Centers from "../pages/centers/Centers";
+import Processors from "../pages/processors/ProcessorsPage"
 import Reports from "../pages/reports/Reports";
 
 import ProtectedRoute from "../auth/ProtectedRoute";
@@ -27,6 +28,7 @@ const CustomRoutes = () => {
 
       {/* MAIN WEBSITE */}
       <Route element={<Mainlayout />}>
+        
         <Route path="/" element={<Home />} />
         <Route path="/contact" element={<Contact />} />
       </Route>
@@ -48,6 +50,7 @@ const CustomRoutes = () => {
           <Route path="/donors" element={<Donors />} />
           <Route path="/waste" element={<Waste />} />
           <Route path="/centers" element={<Centers />} />
+          <Route path="/processors" element={<Processors />} />
           <Route path="/reports" element={<Reports />} />
 
         </Route>

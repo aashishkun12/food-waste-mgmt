@@ -1,5 +1,4 @@
 import { useForm } from "react-hook-form";
-import { FcGoogle } from "react-icons/fc";
 import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -37,95 +36,138 @@ const Login = () => {
         }
     };
 
-    const handleGoogleLogin = () => {
-        alert("Google Login Clicked");
-    };
+    const today = new Date();
+    const ticketId = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
 
     return (
-        <div className="mt-20">
-            <h1 className="text-center text-xl m-3">
-                Sign in to Food Waste Management System
-            </h1>
+        <div className="fwms-login min-h-screen w-full flex flex-col md:flex-row bg-[#F4EFE3]">
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Text:wght@700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+                .fwms-login { font-family: 'Inter', system-ui, sans-serif; }
+                .fwms-display { font-family: 'Big Shoulders Stencil Text', 'Inter', sans-serif; }
+                .fwms-mono { font-family: 'JetBrains Mono', monospace; }
+            `}</style>
 
-            <div className="flex gap-20 items-center w-1/3 mx-auto mt-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="w-full">
+            {/* Brand panel */}
+            <div className="relative md:w-[44%] bg-[#182019] text-[#F4EFE3] px-8 sm:px-12 py-10 md:py-14 flex flex-col justify-around overflow-hidden">
+                <div
+                    className="absolute inset-0 opacity-[0.05] pointer-events-none"
+                    style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "18px 18px" }}
+                />
 
-                    {/* Username */}
-                    <p className="cursor-default text-sm mb-1">
-                        Username or Email Address
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 fwms-mono text-xs uppercase tracking-[0.2em] text-[#B8CB3D]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#B8CB3D]" />
+                        Staff Access
+                    </div>
+
+                    <h1 className="fwms-display text-5xl sm:text-6xl mt-6 tracking-wide leading-none">
+                        WFMS
+                    </h1>
+                    <p className="fwms-mono text-[11px] uppercase tracking-[0.25em] text-[#8FA08F] mt-2">
+                        Waste Food Management System
+                    </p>
+                </div>
+
+                <div className="relative z-10 mt-12 md:mt-0">
+                    <div className="flex items-baseline gap-3">
+                        <span className="fwms-display text-6xl text-[#B8CB3D]">33%</span>
+                        <span className="text-sm text-[#C8D2C4] max-w-[14rem] leading-snug">
+                            of all food produced is lost or wasted before it reaches a plate.
+                        </span>
+                    </div>
+                    <div className="h-px bg-[#33402F] my-6" />
+                    <p className="text-sm text-[#9DAB97] max-w-sm leading-relaxed">
+                        Every shift logged here helps a kitchen track what's thrown out — and catch it sooner next time.
+                    </p>
+                </div>
+            </div>
+
+            {/* Perforated seam, desktop only */}
+            <div className="hidden md:flex relative w-0">
+                <div className="absolute top-0 bottom-0 left-0 w-px border-l-2 border-dashed border-[#D8CFB8]" />
+            </div>
+
+            {/* Form panel */}
+            <div className="flex-1 flex items-center justify-center px-6 sm:px-12 py-14">
+                <div className="w-full max-w-sm">
+
+                    <h2 className="text-2xl font-semibold text-[#1C2620] mb-1">
+                        Sign in to your account
+                    </h2>
+                    <p className="text-sm text-[#6B7568] mb-8">
+                        Enter your shift credentials to continue.
                     </p>
 
-                    <input
-                        type="text"
-                        className={`border rounded w-full p-2 focus:outline-none ${errors.identifier ? "border-red-500" : "border-gray-300"
-                            }`}
-                        {...register("identifier", {
-                            required: "Username/ Email is required",
-                        })}
-                    />
+                    <form onSubmit={handleSubmit(onSubmit)} noValidate>
 
-                    <div className="h-5 mt-1">
-                        {errors.identifier && (
-                            <p className="text-red-500 text-xs">
-                                {errors.identifier.message}
-                            </p>
-                        )}
-                    </div>
+                        {/* Username / Email */}
+                        <label className="block text-sm font-medium text-[#1C2620] mb-1.5" htmlFor="identifier">
+                            Username or email
+                        </label>
+                        <input
+                            id="identifier"
+                            type="text"
+                            autoComplete="username"
+                            placeholder="you@example.com"
+                            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[#1C2620] placeholder:text-[#A3A99A] outline-none transition focus:ring-2 focus:ring-[#B8CB3D] focus:border-[#B8CB3D] ${errors.identifier ? "border-[#B5402F]" : "border-[#D9D4C3]"
+                                }`}
+                            {...register("identifier", {
+                                required: "Username or email is required",
+                            })}
+                        />
+                        <div className="min-h-[1.25rem] mt-1 mb-3">
+                            {errors.identifier && (
+                                <p className="text-xs text-[#B5402F]">
+                                    {errors.identifier.message}
+                                </p>
+                            )}
+                        </div>
 
-                    {/* Password */}
-                    <div className="flex justify-between cursor-default text-sm mt-3 mb-1">
-                        <p>Password</p>
-                        <p className="text-blue-600 cursor-pointer hover:underline">
-                            Forgot Password?
-                        </p>
-                    </div>
+                        {/* Password */}
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-sm font-medium text-[#1C2620]" htmlFor="password">
+                                Password
+                            </label>
+                            <span className="text-xs text-[#5C7A4E] cursor-pointer hover:text-[#3F5C34] hover:underline">
+                                Forgot password?
+                            </span>
+                        </div>
+                        <input
+                            id="password"
+                            type="password"
+                            autoComplete="current-password"
+                            placeholder="••••••••"
+                            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[#1C2620] outline-none transition focus:ring-2 focus:ring-[#B8CB3D] focus:border-[#B8CB3D] ${errors.password ? "border-[#B5402F]" : "border-[#D9D4C3]"
+                                }`}
+                            {...register("password", {
+                                required: "Password is required",
+                            })}
+                        />
+                        <div className="min-h-[1.25rem] mt-1 mb-5">
+                            {errors.password && (
+                                <p className="text-xs text-[#B5402F]">
+                                    {errors.password.message}
+                                </p>
+                            )}
+                        </div>
 
-                    <input
-                        type="password"
-                        className={`border rounded w-full p-2 focus:outline-none ${errors.password ? "border-red-500" : "border-gray-300"
-                            }`}
-                        {...register("password", {
-                            required: "Password is required",
-                        })}
-                    />
+                        {/* Submit */}
+                        <button
+                            type="submit"
+                            className="w-full rounded-md bg-[#1C2620] text-[#F4EFE3] font-medium py-2.5 transition hover:bg-[#283A2C] active:scale-[0.99]"
+                        >
+                            Sign in
+                        </button>
+                    </form>
 
-                    <div className="h-5 mt-1">
-                        {errors.password && (
-                            <p className="text-red-500 text-xs">
-                                {errors.password.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Submit */}
-                    <button className="bg-green-600 rounded text-white p-2 my-3 w-full hover:bg-green-500">
-                        Sign in
-                    </button>
-
-                    {/* Break-line */}
-                    <div className="flex items-center my-4">
-                        <div className="flex-grow border-t border-gray-600"></div>
-
-                        <span className="mx-4 text-gray-700 text-sm">
-                            or
-                        </span>
-
-                        <div className="flex-grow border-t border-gray-600"></div>
-                    </div>
-
-                    {/* Google Login */}
-                    <button className="bg-slate-800 flex items-center justify-center gap-2 rounded text-white p-2 my-3 w-full hover:bg-slate-700" onClick={handleGoogleLogin}>
-                        <FcGoogle />
-                        <span>Continue with Google</span>
-                    </button>
-
-                    <div className="flex justify-center gap-2 cursor-default text-sm my-3 mb-1">
-                        <p>New to Food Waste Management System?</p>
-                        <Link to="/signup" className="text-blue-600 cursor-pointer hover:underline">
+                    <p className="flex justify-center gap-1.5 text-sm text-[#6B7568] mt-8">
+                        New to WFMS?
+                        <Link to="/signup" className="text-[#3F5C34] font-medium hover:underline">
                             Create an account
                         </Link>
-                    </div>
-                </form>
+                    </p>
+                </div>
             </div>
         </div>
     );

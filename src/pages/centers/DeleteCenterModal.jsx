@@ -1,11 +1,11 @@
 import Modal from "../../components/ui/Modal";
 
-const DeleteDonorModal = ({ open, onClose, onConfirm, donor }) => {
+const DeleteCenterModal = ({ open, onClose, onConfirm, center }) => {
   return (
-    <Modal open={open} title="Delete Donor" onClose={onClose}>
+    <Modal open={open} title="Delete Center" onClose={onClose}>
       <p className="text-gray-600 text-sm">
         Are you sure you want to delete{" "}
-        <span className="font-semibold text-gray-800">{donor?.name}</span>?
+        <span className="font-semibold text-gray-800">{center?.location}</span>?
         This action cannot be undone.
       </p>
       <div className="flex justify-end gap-2 mt-5">
@@ -26,4 +26,4 @@ const DeleteDonorModal = ({ open, onClose, onConfirm, donor }) => {
   );
 };
 
-export default DeleteDonorModal;
+export default DeleteCenterModal;

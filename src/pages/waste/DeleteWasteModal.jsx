@@ -1,11 +1,13 @@
 import Modal from "../../components/ui/Modal";
 
-const DeleteDonorModal = ({ open, onClose, onConfirm, donor }) => {
+const DeleteWasteModal = ({ open, onClose, onConfirm, item }) => {
   return (
-    <Modal open={open} title="Delete Donor" onClose={onClose}>
+    <Modal open={open} title="Delete Waste Item" onClose={onClose}>
       <p className="text-gray-600 text-sm">
-        Are you sure you want to delete{" "}
-        <span className="font-semibold text-gray-800">{donor?.name}</span>?
+        Are you sure you want to delete this{" "}
+        <span className="font-semibold text-gray-800">{item?.type}</span> item
+        ({item?.weight} kg) from{" "}
+        <span className="font-semibold text-gray-800">{item?.donorName}</span>?
         This action cannot be undone.
       </p>
       <div className="flex justify-end gap-2 mt-5">
@@ -26,4 +28,4 @@ const DeleteDonorModal = ({ open, onClose, onConfirm, donor }) => {
   );
 };
 
-export default DeleteDonorModal;
+export default DeleteWasteModal;
