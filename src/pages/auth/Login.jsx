@@ -1,43 +1,58 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
     const { register, handleSubmit, formState: { errors } } = useForm();
     const navigate = useNavigate();
+    const [loginError, setLoginError] = useState("");
 
-    const dummyUser = {
-        email: "abc@ab.a",
-        username: "aaa",
-        password: "aaa",
-        role: "ADMIN"
-    };
+    const dummyUsers = [
+        {
+            email: "admin@ab.a",
+            username: "admin",
+            password: "1234",
+            role: "ADMIN",
+        },
+        {
+            email: "operator@ab.a",
+            username: "operator",
+            password: "1234",
+            role: "OPERATOR",
+        },
+        {
+            email: "donor@ab.a",
+            username: "donor",
+            password: "1234",
+            role: "DONOR",
+        },
+    ];
 
     const onSubmit = (user) => {
+        setLoginError("");
 
-        const isValidUser =
-            user.identifier === dummyUser.username ||
-            user.identifier === dummyUser.email;
+        const matchedUser = dummyUsers.find(
+            (dummyUser) =>
+                dummyUser.username === user.identifier ||
+                dummyUser.email === user.identifier
+        );
 
-        const isValidPassword =
-            user.password === dummyUser.password;
+        const isValidPassword = matchedUser && matchedUser.password === user.password;
 
-        if (isValidUser && isValidPassword) {
+        if (matchedUser && isValidPassword) {
 
             // Save logged-in user
             localStorage.setItem(
                 "user",
-                JSON.stringify(dummyUser)
+                JSON.stringify(matchedUser)
             );
 
             navigate("/dashboard");
 
         } else {
-            alert("Invalid email or password");
+            setLoginError("Invalid username or password.");
         }
     };
-
-    const today = new Date();
-    const ticketId = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
 
     return (
         <div className="fwms-login min-h-screen w-full flex flex-col md:flex-row bg-[#F4EFE3]">
@@ -110,10 +125,11 @@ const Login = () => {
                             type="text"
                             autoComplete="username"
                             placeholder="you@example.com"
-                            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[#1C2620] placeholder:text-[#A3A99A] outline-none transition focus:ring-2 focus:ring-[#B8CB3D] focus:border-[#B8CB3D] ${errors.identifier ? "border-[#B5402F]" : "border-[#D9D4C3]"
+                            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[#1C2620] placeholder:text-[#A3A99A] outline-none transition focus:ring-2 focus:ring-[#B8CB3D] focus:border-[#B8CB3D] ${errors.identifier || loginError ? "border-[#B5402F]" : "border-[#D9D4C3]"
                                 }`}
                             {...register("identifier", {
                                 required: "Username or email is required",
+                                onChange: () => setLoginError(""),
                             })}
                         />
                         <div className="min-h-[1.25rem] mt-1 mb-3">
@@ -138,10 +154,11 @@ const Login = () => {
                             type="password"
                             autoComplete="current-password"
                             placeholder="••••••••"
-                            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[#1C2620] outline-none transition focus:ring-2 focus:ring-[#B8CB3D] focus:border-[#B8CB3D] ${errors.password ? "border-[#B5402F]" : "border-[#D9D4C3]"
+                            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[#1C2620] outline-none transition focus:ring-2 focus:ring-[#B8CB3D] focus:border-[#B8CB3D] ${errors.password || loginError ? "border-[#B5402F]" : "border-[#D9D4C3]"
                                 }`}
                             {...register("password", {
                                 required: "Password is required",
+                                onChange: () => setLoginError(""),
                             })}
                         />
                         <div className="min-h-[1.25rem] mt-1 mb-5">
@@ -151,6 +168,18 @@ const Login = () => {
                                 </p>
                             )}
                         </div>
+
+                        {/* Login error, shown again directly above the submit action */}
+                        {loginError && (
+                            <div className="flex items-start gap-2 rounded-md border border-[#E3B7AC] bg-[#FBEAE6] text-[#B5402F] text-sm px-3.5 py-2.5 mb-4">
+                                <svg className="w-4 h-4 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.5" />
+                                    <path d="M10 6v4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                                    <circle cx="10" cy="13.5" r="0.75" fill="currentColor" />
+                                </svg>
+                                {loginError}
+                            </div>
+                        )}
 
                         {/* Submit */}
                         <button

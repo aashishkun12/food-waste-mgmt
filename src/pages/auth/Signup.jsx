@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 
 const Signup = () => {
     const navigate = useNavigate();
+    const [successMessage, setSuccessMessage] = useState("");
 
     const {
         register,
@@ -12,19 +13,15 @@ const Signup = () => {
         reset,
     } = useForm();
 
-    const onSubmit = async (user) => {
-        try {
-            const res = await axios.post("/api/auth/register", user);
-            console.log(res.data);
+    const onSubmit = (user) => {
+        console.log(user);
 
-            setTimeout(() => {
-                alert("Account Created Successfully");
-                navigate("/login");
-            }, 100);
+        reset();
+        setSuccessMessage("Account created successfully. Redirecting you to sign in...");
 
-        } catch (error) {
-            console.error("Signup failed:", error);
-        }
+        setTimeout(() => {
+            navigate("/login");
+        }, 1500);
     };
 
     const benefits = [
@@ -118,6 +115,16 @@ const Signup = () => {
 
                     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
+                        {successMessage && (
+                            <div className="flex items-start gap-2 rounded-md border border-[#A9C16B] bg-[#EEF3DC] text-[#3F5C34] text-sm px-3.5 py-2.5">
+                                <svg className="w-4 h-4 mt-0.5 shrink-0" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="10" r="8.25" stroke="currentColor" strokeWidth="1.5" />
+                                    <path d="M6.5 10.3l2.3 2.3 4.7-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                {successMessage}
+                            </div>
+                        )}
+
                         {/* ROLE */}
                         <div>
                             <label className="block text-xs font-medium text-[#1C2620] mb-1">
@@ -126,7 +133,8 @@ const Signup = () => {
 
                             <select
                                 defaultValue=""
-                                className={`w-full appearance-none rounded-md border bg-white px-3 py-2 pr-8 text-sm outline-none focus:ring-2 focus:ring-[#B8CB3D]
+                                disabled={!!successMessage}
+                                className={`w-full appearance-none rounded-md border bg-white px-3 py-2 pr-8 text-sm outline-none focus:ring-2 focus:ring-[#B8CB3D] disabled:opacity-60
                                 ${errors.role ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
                                 {...register("role", { required: "Role is required" })}
                             >
@@ -137,7 +145,7 @@ const Signup = () => {
 
                             <div className="h-4 mt-1">
                                 {errors.role && (
-                                    <p className="text-xs text-[#B5402F]">{errors.role.message}</p>
+                                    <p className="text-xs text-[#B5402F] truncate">{errors.role.message}</p>
                                 )}
                             </div>
                         </div>
@@ -150,13 +158,18 @@ const Signup = () => {
                                 <input
                                     type="text"
                                     placeholder="Your Name"
-                                    className={`w-full rounded-md border bg-white px-3 py-2 text-sm
+                                    disabled={!!successMessage}
+                                    className={`w-full rounded-md border bg-white px-3 py-2 text-sm disabled:opacity-60
                                     ${errors.name ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
-                                    {...register("name", { required: "Name is required" })}
+                                    {...register("name", {
+                                        required: "Name is required",
+                                        minLength: { value: 2, message: "Min 2 characters" },
+                                        pattern: { value: /^[A-Za-z\s]+$/, message: "Letters only" },
+                                    })}
                                 />
                                 <div className="h-4 mt-1">
                                     {errors.name && (
-                                        <p className="text-xs text-[#B5402F]">{errors.name.message}</p>
+                                        <p className="text-xs text-[#B5402F] truncate">{errors.name.message}</p>
                                     )}
                                 </div>
                             </div>
@@ -166,13 +179,18 @@ const Signup = () => {
                                 <input
                                     type="text"
                                     placeholder="yourname"
-                                    className={`w-full rounded-md border bg-white px-3 py-2 text-sm
+                                    disabled={!!successMessage}
+                                    className={`w-full rounded-md border bg-white px-3 py-2 text-sm disabled:opacity-60
                                     ${errors.username ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
-                                    {...register("username", { required: "Username is required" })}
+                                    {...register("username", {
+                                        required: "Username is required",
+                                        minLength: { value: 3, message: "Min 3 characters" },
+                                        pattern: { value: /^[A-Za-z0-9_]+$/, message: "No spaces or symbols" },
+                                    })}
                                 />
                                 <div className="h-4 mt-1">
                                     {errors.username && (
-                                        <p className="text-xs text-[#B5402F]">{errors.username.message}</p>
+                                        <p className="text-xs text-[#B5402F] truncate">{errors.username.message}</p>
                                     )}
                                 </div>
                             </div>
@@ -184,13 +202,17 @@ const Signup = () => {
                             <input
                                 type="email"
                                 placeholder="you@example.com"
-                                className={`w-full rounded-md border bg-white px-3 py-2 text-sm
+                                disabled={!!successMessage}
+                                className={`w-full rounded-md border bg-white px-3 py-2 text-sm disabled:opacity-60
                                 ${errors.email ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
-                                {...register("email", { required: "Email is required" })}
+                                {...register("email", {
+                                    required: "Email is required",
+                                    pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Enter a valid email" },
+                                })}
                             />
                             <div className="h-4 mt-1">
                                 {errors.email && (
-                                    <p className="text-xs text-[#B5402F]">{errors.email.message}</p>
+                                    <p className="text-xs text-[#B5402F] truncate">{errors.email.message}</p>
                                 )}
                             </div>
                         </div>
@@ -201,16 +223,18 @@ const Signup = () => {
                             <input
                                 type="password"
                                 placeholder="At least 6 characters"
-                                className={`w-full rounded-md border bg-white px-3 py-2 text-sm
+                                disabled={!!successMessage}
+                                className={`w-full rounded-md border bg-white px-3 py-2 text-sm disabled:opacity-60
                                 ${errors.password ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
                                 {...register("password", {
                                     required: "Password is required",
-                                    minLength: { value: 6, message: "Min 6 characters" }
+                                    minLength: { value: 6, message: "Min 6 characters" },
+                                    pattern: { value: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: "Add a letter and a number" },
                                 })}
                             />
                             <div className="h-4 mt-1">
                                 {errors.password && (
-                                    <p className="text-xs text-[#B5402F]">{errors.password.message}</p>
+                                    <p className="text-xs text-[#B5402F] truncate">{errors.password.message}</p>
                                 )}
                             </div>
                         </div>
@@ -218,9 +242,10 @@ const Signup = () => {
                         {/* SUBMIT */}
                         <button
                             type="submit"
-                            className="w-full rounded-md bg-[#1C2620] text-[#F4EFE3] text-sm font-medium py-2.5 hover:bg-[#283A2C]"
+                            disabled={!!successMessage}
+                            className="w-full rounded-md bg-[#1C2620] text-[#F4EFE3] text-sm font-medium py-2.5 hover:bg-[#283A2C] disabled:opacity-60"
                         >
-                            Create account
+                            {successMessage ? "Redirecting..." : "Create account"}
                         </button>
 
                     </form>
