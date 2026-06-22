@@ -1,15 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
 
 const ProtectedRoute = () => {
+    const token = localStorage.getItem("wfms_token");
 
-    const user = JSON.parse(localStorage.getItem("user"));
-
-    // If user not logged in
-    if (!user) {
+    if (!token) {
         return <Navigate to="/login" replace />;
     }
 
-    // If logged in
     return <Outlet />;
 };
 
