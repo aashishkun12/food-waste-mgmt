@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import lombok.Builder;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -26,6 +27,11 @@ public class Processors extends BaseEntity{
     @Positive
     @Column(nullable = false)
     private Double maxProcessingCapicityKg;
+
+    @Column(name = "current_load_kg", nullable = false)
+
+    private Double currentLoadKg = 0.0;
+
 
     @OneToMany(mappedBy = "processor" , cascade = CascadeType.ALL)
     private List<CollectionCentres> collectionCentres = new ArrayList<>();
