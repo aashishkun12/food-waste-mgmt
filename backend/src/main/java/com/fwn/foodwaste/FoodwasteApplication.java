@@ -9,7 +9,7 @@ import java.util.TimeZone;
 public class FoodwasteApplication {
 
 	public static void main(String[] args) {
-		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kathmandu")); // and this line addedgit
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Kathmandu")); // and this line added
 		SpringApplication.run(FoodwasteApplication.class, args);
 	}
 

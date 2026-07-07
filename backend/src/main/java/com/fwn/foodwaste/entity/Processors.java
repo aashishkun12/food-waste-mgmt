@@ -35,4 +35,11 @@ public class Processors extends BaseEntity{
 
     @OneToMany(mappedBy = "processor" , cascade = CascadeType.ALL)
     private List<CollectionCentres> collectionCentres = new ArrayList<>();
+
+
+    @Transient
+    public double getFreeCapacity() {
+        return maxProcessingCapicityKg - currentLoadKg;
+    }
+
 }

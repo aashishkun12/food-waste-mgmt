@@ -3,14 +3,19 @@ package com.fwn.foodwaste.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-import lombok.Data;
+import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "collection_centres")
-@Data
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CollectionCentres extends BaseEntity{
 
     @NotBlank
@@ -38,7 +43,7 @@ public class CollectionCentres extends BaseEntity{
     @OneToMany(mappedBy = "collectionCentre", cascade = CascadeType.ALL)
     private List<FoodWasteItems> foodWasteItems = new ArrayList<>();
 
-    private boolean hasCapicity(double weighKg){
+    public boolean hasCapacity (double weighKg){
         return (currentLoadKg + weighKg) <= maxCapicityKg;
     }
 }
