@@ -10,5 +10,7 @@ import java.util.Optional;
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
 
+    // Used by DataSeeder on startup and by AuthService during registration
+
     Optional<Role> findByRole(RoleName role);
 }

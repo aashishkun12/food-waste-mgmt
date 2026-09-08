@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @Table(name = "food_waste_item")
 public class FoodWasteItems extends BaseEntity{
 
-    @NotBlank
+    @NotNull
     @Positive
     @Column(nullable = false)
     private Double weightKg;

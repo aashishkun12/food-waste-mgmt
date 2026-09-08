@@ -99,6 +99,7 @@ public class CollectionCenterService {
 
     private void mapFields(CollectionCentres c,
                            CollectionCenterRequest req) {
+        c.setName(req.getName());
         c.setLocation(req.getLocation());
         c.setMaxCapicityKg(req.getMaxCapacityKg());
 
@@ -126,6 +127,7 @@ public class CollectionCenterService {
 
         return CollectionCenterResponse.builder()
                 .id(c.getId())
+                .name(c.getName())
                 .location(c.getLocation())
                 .maxCapacityKg(c.getMaxCapicityKg())
                 .currentLoadKg(c.getCurrentLoadKg())

@@ -9,6 +9,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CollectionCenterRequest {
+
+    @NotBlank(message = "name is required")
+    private String name;
     @NotBlank(message = "Location is required")
     private String location;
 

@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CollectionCenterResponse {
     private Long id;
+    private String name;
     private String location;
     private Double maxCapacityKg;
     private Double currentLoadKg;
