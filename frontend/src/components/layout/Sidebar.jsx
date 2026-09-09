@@ -38,6 +38,7 @@ const MENU_ITEMS = {
   ],
   ROLE_DONOR: [
     { name: "Dashboard", path: "/dashboard" },
+    { name: "Donors",    path: "/donors" },
   ],
 };
 

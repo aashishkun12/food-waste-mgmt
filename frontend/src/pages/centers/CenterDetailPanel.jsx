@@ -96,10 +96,10 @@ const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch }) => {
             <p className="text-sm text-gray-400">No donors assigned.</p>
           ) : (
             <ul className="space-y-1">
-              {center.donors.map((d, i) => (
-                <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
+              {center.donors.map((donor) => (
+                <li key={donor.id} className="flex items-center gap-2 text-sm text-gray-700">
                   <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                  {d}
+                  {donor.name}
                 </li>
               ))}
             </ul>

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Table from "../../components/ui/Table";
 import StatCard from "../../components/ui/StatCard";
@@ -7,58 +8,16 @@ import CapacityBar from "../../components/ui/CapacityBar";
 import CenterDetailPanel from "./CenterDetailPanel";
 import CenterFormModal from "./CenterFormModal";
 import DeleteCenterModal from "./DeleteCenterModal";
-import AcceptWasteModal from "./AcceptWasteModal";
 import DispatchModal from "./DispatchModal";
-
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-const DUMMY_PROCESSORS = [
-  { id: 1, name: "GreenCycle Processor" },
-  { id: 2, name: "EcoWaste Solutions" },
-  { id: 3, name: "BioConvert Ltd." },
-];
-
-const DUMMY_CENTERS = [
-  {
-    id: 1,
-    location: "Kathmandu - Baneshwor",
-    maxCapacity: 500,
-    currentLoad: 420,
-    processorId: 1,
-    processorName: "GreenCycle Processor",
-    donors: ["Green Farm Foods", "Fresh Market"],
-    wasteItems: [
-      { id: 101, type: "VEGETABLES", weight: 120, expiry: "2026-06-21" },
-      { id: 102, type: "FRUITS", weight: 80, expiry: "2026-06-22" },
-      { id: 103, type: "DAIRY", weight: 220, expiry: "2026-06-20" },
-    ],
-  },
-  {
-    id: 2,
-    location: "Pokhara - Lakeside",
-    maxCapacity: 300,
-    currentLoad: 90,
-    processorId: 2,
-    processorName: "EcoWaste Solutions",
-    donors: ["Pokhara Organics"],
-    wasteItems: [
-      { id: 201, type: "GRAINS", weight: 60, expiry: "2026-06-25" },
-      { id: 202, type: "BEVERAGES", weight: 30, expiry: "2026-06-24" },
-    ],
-  },
-  {
-    id: 3,
-    location: "Lalitpur - Patan",
-    maxCapacity: 400,
-    currentLoad: 400,
-    processorId: 3,
-    processorName: "BioConvert Ltd.",
-    donors: ["Patan Market", "City Grocers"],
-    wasteItems: [
-      { id: 301, type: "MEAT", weight: 200, expiry: "2026-06-20" },
-      { id: 302, type: "OTHER", weight: 200, expiry: "2026-06-23" },
-    ],
-  },
-];
+import { getCurrentRole, hasRole } from "../../utils/auth";
+import {
+  createCenter,
+  deleteCenter,
+  dispatchCenter,
+  getCenterSupportingData,
+  getCenters,
+  updateCenter,
+} from "../../utils/centerApi";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const getCapacityStatus = (current, max) => {
@@ -68,20 +27,80 @@ const getCapacityStatus = (current, max) => {
   return { label: "OK", cls: "bg-green-100 text-green-700" };
 };
 
+const normalizeCenter = (center, wasteItems, donors) => {
+  const wasteHeld = wasteItems
+    .filter((item) => item.collectionCenterId === center.id && !item.processed)
+    .map((item) => ({
+      id: item.id,
+      type: item.wasteType,
+      weight: Number(item.weightKg || 0),
+      expiry: item.expirationDate,
+    }));
+  const donorIds = new Set(
+    wasteItems
+      .filter((item) => item.collectionCenterId === center.id)
+      .map((item) => item.donorId)
+  );
+
+  return {
+    ...center,
+    maxCapacity: Number(center.maxCapacityKg || 0),
+    currentLoad: Number(center.currentLoadKg || 0),
+    donors: donors.filter((donor) => donorIds.has(donor.id)),
+    wasteItems: wasteHeld,
+  };
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 const Centers = () => {
-  const [centers, setCenters] = useState(DUMMY_CENTERS);
+  const [centers, setCenters] = useState([]);
+  const [processors, setProcessors] = useState([]);
+  const [donors, setDonors] = useState([]);
+  const [wasteItems, setWasteItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [targetCenter, setTargetCenter] = useState(null);
 
-  const currentUser = JSON.parse(localStorage.getItem("user"));
-  const isAdmin = currentUser?.role === "ADMIN";
+  const navigate = useNavigate();
+  const canManageCenters = hasRole("ROLE_ADMIN") || hasRole("ROLE_OPERATOR");
+  const isAdmin = hasRole("ROLE_ADMIN");
+
+  useEffect(() => {
+    if (!canManageCenters) {
+      navigate("/dashboard");
+    }
+  }, [canManageCenters, navigate]);
+
+  const loadCenters = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [centerData, [processorData, donorData, wasteData]] = await Promise.all([
+        getCenters(),
+        getCenterSupportingData(),
+      ]);
+      setProcessors(processorData || []);
+      setDonors(donorData || []);
+      setWasteItems(wasteData || []);
+      setCenters((centerData || []).map((center) =>
+        normalizeCenter(center, wasteData || [], donorData || [])
+      ));
+    } catch (requestError) {
+      setError(requestError.message || "Unable to load collection centers.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (canManageCenters) loadCenters();
+  }, [canManageCenters]);
 
   // Modal visibility
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [acceptOpen, setAcceptOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
 
   // ── Summary stats ──
@@ -93,56 +112,41 @@ const Centers = () => {
   const totalCapacity = centers.reduce((s, c) => s + c.maxCapacity, 0);
 
   // ── Handlers ──
-  const handleAdd = (newCenter) => {
-    setCenters((prev) => [...prev, newCenter]);
+  const handleAdd = async (newCenter) => {
+    await createCenter(newCenter);
+    await loadCenters();
   };
 
-  const handleEdit = (updated) => {
-    setCenters((prev) =>
-      prev.map((c) => (c.id === updated.id ? updated : c))
-    );
-    if (selectedCenter?.id === updated.id) setSelectedCenter(updated);
+  const handleEdit = async (updated) => {
+    await updateCenter(updated);
+    await loadCenters();
+    setSelectedCenter(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    await deleteCenter(targetCenter.id);
     setCenters((prev) => prev.filter((c) => c.id !== targetCenter.id));
     if (selectedCenter?.id === targetCenter.id) setSelectedCenter(null);
     setDeleteOpen(false);
   };
 
-  const handleAcceptWaste = (centerId, newItem) => {
-    setCenters((prev) =>
-      prev.map((c) =>
-        c.id === centerId
-          ? {
-              ...c,
-              currentLoad: c.currentLoad + newItem.weight,
-              wasteItems: [...c.wasteItems, newItem],
-            }
-          : c
-      )
-    );
-  };
-
-  const handleDispatch = () => {
-    setCenters((prev) =>
-      prev.map((c) =>
-        c.id === targetCenter.id
-          ? { ...c, currentLoad: 0, wasteItems: [] }
-          : c
-      )
-    );
+  const handleDispatch = async () => {
+    await dispatchCenter(targetCenter.id);
+    await loadCenters();
+    setSelectedCenter(null);
     setDispatchOpen(false);
   };
 
   // Open helpers
   const openEdit = (center) => { setTargetCenter(center); setEditOpen(true); };
   const openDelete = (center) => { setTargetCenter(center); setDeleteOpen(true); };
-  const openAccept = (center) => { setTargetCenter(center); setAcceptOpen(true); };
   const openDispatch = (center) => { setTargetCenter(center); setDispatchOpen(true); };
+
+  if (!canManageCenters) return null;
 
   // ── Table columns ──
   const columns = [
+    { key: "name", label: "Name" },
     { key: "location", label: "Location" },
     {
       key: "capacity",
@@ -186,20 +190,12 @@ const Centers = () => {
           </button>
 
           <button
-            onClick={() => openAccept(row)}
-            className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
-          >
-            Accept
-          </button>
-
-          <button
             onClick={() => openDispatch(row)}
             className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
           >
             Dispatch
           </button>
 
-          {/* DELETE ONLY FOR ADMIN */}
           {isAdmin && (
             <button
               onClick={() => openDelete(row)}
@@ -241,14 +237,20 @@ const Centers = () => {
         <StatCard label="Total Capacity (kg)" value={totalCapacity} icon="📊" color="green" />
       </div>
 
+      {error && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{error}</span>
+          <button onClick={loadCenters} className="font-semibold underline">Retry</button>
+        </div>
+      )}
+
       {/* Table */}
-      <Table columns={columns} data={centers} />
+      {loading ? <p className="text-gray-500">Loading collection centers...</p> : <Table columns={columns} data={centers} />}
 
       {/* Detail Panel */}
       <CenterDetailPanel
         center={selectedCenter}
         onClose={() => setSelectedCenter(null)}
-        onAccept={openAccept}
         onDispatch={openDispatch}
       />
 
@@ -257,28 +259,22 @@ const Centers = () => {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onSubmit={handleAdd}
-        processors={DUMMY_PROCESSORS}
+        processors={processors}
       />
 
       <CenterFormModal
         open={editOpen}
         onClose={() => setEditOpen(false)}
         onSubmit={handleEdit}
-        processors={DUMMY_PROCESSORS}
+        processors={processors}
         center={targetCenter}
+        donors={donors}
       />
 
       <DeleteCenterModal
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDelete}
-        center={targetCenter}
-      />
-
-      <AcceptWasteModal
-        open={acceptOpen}
-        onClose={() => setAcceptOpen(false)}
-        onAccept={handleAcceptWaste}
         center={targetCenter}
       />
 

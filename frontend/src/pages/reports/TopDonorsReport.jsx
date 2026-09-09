@@ -3,14 +3,6 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 
-const DUMMY_TOP_DONORS = [
-  { name: "Green Farm Foods",  totalKg: 340 },
-  { name: "Fresh Market",      totalKg: 210 },
-  { name: "Pokhara Organics",  totalKg: 180 },
-  { name: "City Grocers",      totalKg: 130 },
-  { name: "Patan Market",      totalKg: 95  },
-];
-
 const COLORS = ["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"];
 
 const CustomTooltip = ({ active, payload }) => {
@@ -25,8 +17,15 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-const TopDonorsReport = () => {
-  const sorted = [...DUMMY_TOP_DONORS].sort((a, b) => b.totalKg - a.totalKg);
+const TopDonorsReport = ({ items }) => {
+  const totals = items.reduce((result, item) => {
+    const name = item.donorName || "Unknown donor";
+    result[name] = (result[name] || 0) + Number(item.weightKg || 0);
+    return result;
+  }, {});
+  const sorted = Object.entries(totals)
+    .map(([name, totalKg]) => ({ name, totalKg }))
+    .sort((a, b) => b.totalKg - a.totalKg);
 
   return (
     <div className="space-y-6">
@@ -75,7 +74,7 @@ const TopDonorsReport = () => {
           <tbody>
             {sorted.map((donor, i) => {
               const total = sorted.reduce((s, d) => s + d.totalKg, 0);
-              const pct = ((donor.totalKg / total) * 100).toFixed(1);
+              const pct = total ? ((donor.totalKg / total) * 100).toFixed(1) : "0.0";
               return (
                 <tr key={i} className="border-t hover:bg-gray-50">
                   <td className="p-3">

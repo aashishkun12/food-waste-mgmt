@@ -1,34 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiUsers, FiTrash2, FiAlertTriangle, FiCheckCircle } from "react-icons/fi";
 import DonorFormModal from "../donors/DonorFormModal";
-
-const today = new Date();
-const daysAgo = (n) => {
-  const d = new Date(today);
-  d.setDate(d.getDate() - n);
-  return d.toISOString();
-};
-
-const DUMMY_TOP_DONORS = [
-  { donorId: 1, donorName: "Green Farm Foods", totalKg: 120 },
-  { donorId: 2, donorName: "Fresh Market", totalKg: 95 },
-  { donorId: 3, donorName: "Valley Bakery", totalKg: 60 },
-];
-
-const DUMMY_CENTERS = [
-  { id: 1, location: "Kathmandu - Baneshwor", maxCapacity: 500, currentLoad: 460 },
-  { id: 2, location: "Pokhara - Lakeside", maxCapacity: 300, currentLoad: 120 },
-  { id: 3, location: "Lalitpur - Patan", maxCapacity: 400, currentLoad: 410 },
-];
-
-const DUMMY_WASTE_ITEMS = [
-  { id: 1, weight: 12, wasteType: "VEGETABLES", processed: true,  createdAt: daysAgo(0), processedAt: daysAgo(0) },
-  { id: 2, weight: 8,  wasteType: "DAIRY",      processed: false, createdAt: daysAgo(0) },
-  { id: 3, weight: 20, wasteType: "GRAINS",     processed: true,  createdAt: daysAgo(1), processedAt: daysAgo(1) },
-  { id: 4, weight: 5,  wasteType: "FRUITS",     processed: false, createdAt: daysAgo(2) },
-  { id: 5, weight: 15, wasteType: "MEAT",       processed: true,  createdAt: daysAgo(0), processedAt: daysAgo(0) },
-];
+import api from "../../utils/api";
+import { createDonor, getDonors } from "../../utils/donorApi";
+import { getCenters } from "../../utils/centerApi";
 
 const ROLE_STYLES = {
   ROLE_ADMIN:    "bg-purple-100 text-purple-700",
@@ -39,6 +15,7 @@ const ROLE_STYLES = {
 const isToday = (dateString) => {
   if (!dateString) return false;
   const d = new Date(dateString);
+  const today = new Date();
   return (
     d.getFullYear() === today.getFullYear() &&
     d.getMonth()    === today.getMonth() &&
@@ -61,24 +38,66 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   // ── Read from localStorage ──
-  const token       = localStorage.getItem("wfms_token");
-  const currentUser = token ? JSON.parse(atob(token.split(".")[1])) : null;
+  const token = localStorage.getItem("wfms_token");
+  const currentUser = token ? (() => {
+    try {
+      return JSON.parse(atob(token.split(".")[1]));
+    } catch {
+      return null;
+    }
+  })() : null;
   const username    = currentUser?.sub;
   const role        = localStorage.getItem("wfms_role");  // "ROLE_ADMIN" | "ROLE_OPERATOR" | "ROLE_DONOR"
 
-  const [donors, setDonors]   = useState(DUMMY_TOP_DONORS);
-  const [centers]             = useState(DUMMY_CENTERS);
-  const [wasteItems]          = useState(DUMMY_WASTE_ITEMS);
+  const [donors, setDonors] = useState([]);
+  const [centers, setCenters] = useState([]);
+  const [wasteItems, setWasteItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [showAddDonor, setShowAddDonor] = useState(false);
 
+  useEffect(() => {
+    if (role === "ROLE_DONOR") {
+      setLoading(false);
+      return undefined;
+    }
+
+    const loadDashboard = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const [donorData, centerData, wasteData] = await Promise.all([
+          getDonors(),
+          getCenters(),
+          api.get("/api/food-waste-items"),
+        ]);
+        setDonors(donorData || []);
+        setCenters(centerData || []);
+        setWasteItems(wasteData || []);
+      } catch (requestError) {
+        setError(requestError.message || "Unable to load dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, [role]);
+
   const handleAddDonor = async (payload) => {
-    setDonors((prev) => [...prev, { donorId: Date.now(), donorName: payload.name, totalKg: 0 }]);
+    const created = await createDonor(payload);
+    setDonors((prev) => [...prev, created]);
+    setShowAddDonor(false);
   };
 
   const totalDonors        = donors.length;
   const totalWasteToday    = wasteItems.filter((i) => isToday(i.createdAt)).length;
   const itemsProcessedToday = wasteItems.filter(isProcessedToday).length;
-  const centersNearCapacity = centers.filter((c) => c.maxCapacity > 0 && c.currentLoad / c.maxCapacity >= 0.8).length;
+  const centersNearCapacity = centers.filter((c) => {
+    const maxCapacity = Number(c.maxCapacityKg || 0);
+    const currentLoad = Number(c.currentLoadKg || 0);
+    return maxCapacity > 0 && currentLoad / maxCapacity >= 0.8;
+  }).length;
 
   // ── DONOR: simplified view ──
   if (role === "ROLE_DONOR") {
@@ -106,11 +125,13 @@ const Dashboard = () => {
         <RoleBadge role={role} />
       </div>
 
+      {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <MetricCard icon={<FiUsers className="text-blue-600" size={22} />}   label="Total Donors"           value={totalDonors} />
-        <MetricCard icon={<FiTrash2 className="text-green-600" size={22} />} label="Waste Items Today"      value={totalWasteToday} />
-        <MetricCard icon={<FiAlertTriangle className="text-yellow-600" size={22} />} label="Centers Near Capacity" value={centersNearCapacity} />
-        <MetricCard icon={<FiCheckCircle className="text-emerald-600" size={22} />}  label="Items Processed Today"  value={itemsProcessedToday} />
+        <MetricCard icon={<FiUsers className="text-blue-600" size={22} />} label="Total Donors" value={loading ? "..." : totalDonors} />
+        <MetricCard icon={<FiTrash2 className="text-green-600" size={22} />} label="Waste Items Today" value={loading ? "..." : totalWasteToday} />
+        <MetricCard icon={<FiAlertTriangle className="text-yellow-600" size={22} />} label="Centers Near Capacity" value={loading ? "..." : centersNearCapacity} />
+        <MetricCard icon={<FiCheckCircle className="text-emerald-600" size={22} />} label="Items Processed Today" value={loading ? "..." : itemsProcessedToday} />
       </div>
 
       <div className="bg-white shadow rounded p-6">
@@ -118,9 +139,6 @@ const Dashboard = () => {
         <div className="flex flex-wrap gap-3">
           <button onClick={() => setShowAddDonor(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
             + Add Donor
-          </button>
-          <button onClick={() => navigate("/centers")} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-            Accept Waste at Center
           </button>
           <button onClick={() => navigate("/centers")} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">
             Dispatch to Processor

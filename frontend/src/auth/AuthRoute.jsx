@@ -1,11 +1,16 @@
 import { Navigate, Outlet } from "react-router-dom";
 
 const AuthRoute = () => {
+    const token = localStorage.getItem("wfms_token");
+    let user = null;
 
-    const user = JSON.parse(localStorage.getItem("user"));
+    try {
+        user = JSON.parse(localStorage.getItem("user"));
+    } catch {
+        localStorage.removeItem("user");
+    }
 
-    // If logged in → redirect to dashboard
-    if (user) {
+    if (token && user) {
         return <Navigate to="/dashboard" replace />;
     }
 

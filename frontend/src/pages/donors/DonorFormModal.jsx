@@ -1,19 +1,13 @@
 import { useState, useEffect } from "react";
 import Modal from "../../components/ui/Modal";
 
-const FALLBACK_CENTERS = [
-  { id: 1, location: "Kathmandu - Baneshwor" },
-  { id: 2, location: "Pokhara - Lakeside" },
-  { id: 3, location: "Lalitpur - Patan" },
-];
-
 const EMAIL_REGEX = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 const PHONE_REGEX = /^(98|97)\d{8}$/;
 
-const emptyForm = { name: "", address: "", email: "", phone: "", centerIds: [] };
+const emptyForm = { name: "", address: "", contactEmail: "", contactPhone: "", collectionCenterIds: [] };
 
 const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
-  const centerOptions = centers && centers.length > 0 ? centers : FALLBACK_CENTERS;
+  const centerOptions = centers || [];
   const isEdit = Boolean(donor);
 
   const [form, setForm] = useState(emptyForm);
@@ -29,9 +23,9 @@ const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
           ? {
               name: donor.name || "",
               address: donor.address || "",
-              email: donor.email || "",
-              phone: donor.phone || "",
-              centerIds: donor.centers?.map((c) => c.id) || [],
+              contactEmail: donor.contactEmail || "",
+              contactPhone: donor.contactPhone || "",
+              collectionCenterIds: donor.collectionCenterIds || [],
             }
           : emptyForm
       );
@@ -48,13 +42,13 @@ const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
 
     if (!form.address.trim()) e.address = "Address is required";
 
-    if (!form.email.trim()) e.email = "Email is required";
-    else if (!EMAIL_REGEX.test(form.email.trim())) e.email = "Enter a valid email address";
+    if (!form.contactEmail.trim()) e.contactEmail = "Email is required";
+    else if (!EMAIL_REGEX.test(form.contactEmail.trim())) e.contactEmail = "Enter a valid email address";
 
-    if (!form.phone.trim()) e.phone = "Phone is required";
-    else if (!PHONE_REGEX.test(form.phone.trim())) e.phone = "Enter a valid 10-digit mobile number";
+    if (!form.contactPhone.trim()) e.contactPhone = "Phone is required";
+    else if (!PHONE_REGEX.test(form.contactPhone.trim())) e.contactPhone = "Enter a valid 10-digit mobile number";
 
-    if (form.centerIds.length === 0) e.centerIds = "Select at least one collection center";
+    if (form.collectionCenterIds.length === 0) e.collectionCenterIds = "Select at least one collection center";
 
     return e;
   };
@@ -67,11 +61,11 @@ const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
   const toggleCenter = (id) => {
     setForm((prev) => ({
       ...prev,
-      centerIds: prev.centerIds.includes(id)
-        ? prev.centerIds.filter((c) => c !== id)
-        : [...prev.centerIds, id],
+      collectionCenterIds: prev.collectionCenterIds.includes(id)
+        ? prev.collectionCenterIds.filter((centerId) => centerId !== id)
+        : [...prev.collectionCenterIds, id],
     }));
-    setErrors((prev) => ({ ...prev, centerIds: "" }));
+    setErrors((prev) => ({ ...prev, collectionCenterIds: "" }));
   };
 
   const handleSubmit = async () => {
@@ -81,19 +75,16 @@ const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
       return;
     }
 
-    const selectedCenters = centerOptions.filter((c) => form.centerIds.includes(c.id));
-
     setSubmitting(true);
     setSubmitError("");
     try {
       await onSubmit({
-        ...(isEdit ? donor : { id: Date.now(), donationCount: 0, wasteItems: [] }),
+        ...(isEdit ? donor : {}),
         name: form.name.trim(),
         address: form.address.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        centerIds: form.centerIds,
-        centers: selectedCenters,
+        contactEmail: form.contactEmail.trim(),
+        contactPhone: form.contactPhone.trim(),
+        collectionCenterIds: form.collectionCenterIds,
       });
       onClose();
     } catch (err) {
@@ -149,46 +140,48 @@ const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
           <label className="text-sm text-gray-600 mb-1 block">Contact Email</label>
           <input
             type="email"
-            value={form.email}
+            value={form.contactEmail}
             disabled={submitting}
-            onChange={(e) => handleChange("email", e.target.value)}
-            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-100 ${errors.email ? "border-red-400" : "border-gray-300"}`}
+            onChange={(e) => handleChange("contactEmail", e.target.value)}
+            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-100 ${errors.contactEmail ? "border-red-400" : "border-gray-300"}`}
             placeholder="e.g. donor@example.com"
           />
-          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+          {errors.contactEmail && <p className="text-red-500 text-xs mt-1">{errors.contactEmail}</p>}
         </div>
 
         <div>
           <label className="text-sm text-gray-600 mb-1 block">Phone</label>
           <input
             type="tel"
-            value={form.phone}
+            value={form.contactPhone}
             disabled={submitting}
-            onChange={(e) => handleChange("phone", e.target.value.replace(/\D/g, ""))}
+            onChange={(e) => handleChange("contactPhone", e.target.value.replace(/\D/g, ""))}
             maxLength={10}
-            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-100 ${errors.phone ? "border-red-400" : "border-gray-300"}`}
+            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-100 ${errors.contactPhone ? "border-red-400" : "border-gray-300"}`}
             placeholder="e.g. 9800000001"
           />
-          {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+          {errors.contactPhone && <p className="text-red-500 text-xs mt-1">{errors.contactPhone}</p>}
         </div>
 
         <div>
           <label className="text-sm text-gray-600 mb-1 block">Collection Centers</label>
-          <div className={`border rounded p-2 flex flex-col gap-2 ${errors.centerIds ? "border-red-400" : "border-gray-300"}`}>
-            {centerOptions.map((c) => (
+          <div className={`border rounded p-2 flex flex-col gap-2 ${errors.collectionCenterIds ? "border-red-400" : "border-gray-300"}`}>
+            {centerOptions.length > 0 ? centerOptions.map((c) => (
               <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={form.centerIds.includes(c.id)}
+                  checked={form.collectionCenterIds.includes(c.id)}
                   disabled={submitting}
                   onChange={() => toggleCenter(c.id)}
                   className="accent-green-600"
                 />
                 {c.location}
               </label>
-            ))}
+            )) : (
+              <p className="text-sm text-gray-500">No collection centers are available.</p>
+            )}
           </div>
-          {errors.centerIds && <p className="text-red-500 text-xs mt-1">{errors.centerIds}</p>}
+          {errors.collectionCenterIds && <p className="text-red-500 text-xs mt-1">{errors.collectionCenterIds}</p>}
         </div>
       </div>
 

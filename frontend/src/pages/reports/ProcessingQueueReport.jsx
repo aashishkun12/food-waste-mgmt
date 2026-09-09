@@ -1,12 +1,3 @@
-const DUMMY_QUEUE = [
-  { id: 3,  type: "MEAT",       weight: 45,  expiry: "2026-06-19", donorName: "Fresh Market",     centerLocation: "Lalitpur - Patan"        },
-  { id: 1,  type: "VEGETABLES", weight: 120, expiry: "2026-06-21", donorName: "Green Farm Foods",  centerLocation: "Kathmandu - Baneshwor"   },
-  { id: 2,  type: "FRUITS",     weight: 80,  expiry: "2026-06-22", donorName: "Green Farm Foods",  centerLocation: "Pokhara - Lakeside"      },
-  { id: 7,  type: "OTHER",      weight: 15,  expiry: "2026-06-23", donorName: "Pokhara Organics",  centerLocation: "Lalitpur - Patan"        },
-  { id: 6,  type: "BEVERAGES",  weight: 30,  expiry: "2026-06-24", donorName: "Green Farm Foods",  centerLocation: "Pokhara - Lakeside"      },
-  { id: 4,  type: "GRAINS",     weight: 200, expiry: "2026-06-25", donorName: "Pokhara Organics",  centerLocation: "Pokhara - Lakeside"      },
-];
-
 const WASTE_TYPE_COLORS = {
   VEGETABLES: "bg-green-100 text-green-700",
   DAIRY:      "bg-blue-100 text-blue-700",
@@ -28,9 +19,14 @@ const urgencyLabel = (expiry) => {
   return               { label: "OK",         cls: "bg-green-100 text-green-700",   dot: "bg-green-500"  };
 };
 
-const ProcessingQueueReport = () => {
-  // Already sorted by expiry (earliest first = highest priority)
-  const queue = [...DUMMY_QUEUE].sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+const ProcessingQueueReport = ({ items }) => {
+  const queue = items.map((item) => ({
+    ...item,
+    type: item.wasteType,
+    weight: Number(item.weightKg || 0),
+    expiry: item.expirationDate,
+    centerLocation: item.collectionCenterLocation,
+  })).sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
 
   return (
     <div className="space-y-6">

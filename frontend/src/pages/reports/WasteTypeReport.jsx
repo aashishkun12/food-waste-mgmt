@@ -3,16 +3,6 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 
-const DUMMY_WASTE_FREQUENCY = [
-  { type: "VEGETABLES", count: 38, totalKg: 520 },
-  { type: "FRUITS",     count: 25, totalKg: 310 },
-  { type: "DAIRY",      count: 18, totalKg: 240 },
-  { type: "GRAINS",     count: 15, totalKg: 410 },
-  { type: "MEAT",       count: 10, totalKg: 180 },
-  { type: "BEVERAGES",  count: 8,  totalKg: 95  },
-  { type: "OTHER",      count: 6,  totalKg: 70  },
-];
-
 const COLORS = {
   VEGETABLES: "#16a34a",
   FRUITS:     "#f97316",
@@ -48,8 +38,17 @@ const CustomLegend = ({ payload }) => (
   </div>
 );
 
-const WasteTypeReport = () => {
-  const total = DUMMY_WASTE_FREQUENCY.reduce((s, d) => s + d.count, 0);
+const WasteTypeReport = ({ items }) => {
+  const frequency = items.reduce((result, item) => {
+    const type = item.wasteType || "OTHER";
+    const current = result[type] || { type, count: 0, totalKg: 0 };
+    current.count += 1;
+    current.totalKg += Number(item.weightKg || 0);
+    result[type] = current;
+    return result;
+  }, {});
+  const data = Object.values(frequency).sort((a, b) => b.count - a.count);
+  const total = data.reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="space-y-6">
@@ -65,7 +64,7 @@ const WasteTypeReport = () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={DUMMY_WASTE_FREQUENCY}
+                data={data}
                 dataKey="count"
                 nameKey="type"
                 cx="50%"
@@ -74,7 +73,7 @@ const WasteTypeReport = () => {
                 outerRadius={110}
                 paddingAngle={3}
               >
-                {DUMMY_WASTE_FREQUENCY.map((entry) => (
+                {data.map((entry) => (
                   <Cell key={entry.type} fill={COLORS[entry.type]} />
                 ))}
               </Pie>
@@ -96,8 +95,8 @@ const WasteTypeReport = () => {
               </tr>
             </thead>
             <tbody>
-              {DUMMY_WASTE_FREQUENCY.sort((a, b) => b.count - a.count).map((row) => {
-                const pct = ((row.count / total) * 100).toFixed(1);
+              {data.map((row) => {
+                const pct = total ? ((row.count / total) * 100).toFixed(1) : "0.0";
                 return (
                   <tr key={row.type} className="border-t hover:bg-gray-50">
                     <td className="p-3">
