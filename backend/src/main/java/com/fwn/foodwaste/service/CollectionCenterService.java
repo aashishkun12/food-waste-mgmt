@@ -2,7 +2,11 @@ package com.fwn.foodwaste.service;
 
 import com.fwn.foodwaste.dto.Request.CollectionCenterRequest;
 import com.fwn.foodwaste.dto.Response.CollectionCenterResponse;
+import com.fwn.foodwaste.dto.Response.FoodWasteItemResponse;
 import com.fwn.foodwaste.entity.CollectionCentres;
+import com.fwn.foodwaste.entity.FoodWasteItems;
+import com.fwn.foodwaste.entity.Processors;
+import com.fwn.foodwaste.exception.CapacityExceededException;
 import com.fwn.foodwaste.exception.ResourceNotFoundException;
 import com.fwn.foodwaste.exception.ValidationException;
 import com.fwn.foodwaste.repository.CollectionCenterRepository;
@@ -13,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,45 +63,44 @@ public class CollectionCenterService {
         centerRepo.deleteById(id);
     }
 
-//    // End-of-day dispatch — greedy best-fit
-//    public String dispatchToProcessor(Long centerId) {
-//        CollectionCentres center = getCenter(centerId);
-//
-//        if (center.getProcessor() == null)
-//            throw new ValidationException(
-//                    "No processor assigned to center: "
-//                            + center.getLocation());
-//
-//        var pending = itemRepo
-//                .findByCollectionCenterIdAndProcessedFalse(centerId);
-//
-//        if (pending.isEmpty())
-//            return "No pending items to dispatch";
-//
-//        double totalKg = pending.stream()
-//                .mapToDouble(i -> i.getWeightKg()).sum();
-//
-//        var processor = center.getProcessor();
-//        if (processor.getFreeCapacity() < totalKg)
-//            throw new CapacityExceededException(
-//                    "Processor '" + processor.getName()
-//                            + "' cannot accept " + totalKg + " kg. "
-//                            + "Free: " + processor.getFreeCapacity() + " kg");
-//
-//        pending.forEach(i -> i.setProcessed(true));
-//        itemRepo.saveAll(pending);
-//
-//        processor.setCurrentLoadKg(
-//                processor.getCurrentLoadKg() + totalKg);
-//        processorRepo.save(processor);
-//
-//        center.setCurrentLoadKg(0.0);
-//        centerRepo.save(center);
-//
-//        return "Dispatched " + totalKg + " kg ("
-//                + pending.size() + " items) to "
-//                + processor.getName();
-//    }
+
+
+
+//    END-OF-DAY DISPATCH
+    public String dispatchToProcessor(Long centerId) {
+        CollectionCentres center = getCenter(centerId);
+
+        if (center.getProcessor() == null)
+            throw new ValidationException(
+                    "No processor assigned to center '"
+                            + center.getLocation() + "'");
+
+        List<FoodWasteItems> pending =
+                itemRepo.findByCollectionCentre_IdAndProcessedFalse(centerId);
+
+        if (pending.isEmpty())
+            return "No pending items at '" + center.getLocation() + "'";
+
+        double totalKg = pending.stream()
+                .mapToDouble(FoodWasteItems::getWeightKg).sum();
+
+        Processors processor = center.getProcessor();
+        if (processor.getFreeCapacity() < totalKg)
+            throw new CapacityExceededException(
+                    "Processor '" + processor.getName()
+                            + "' cannot accept " + totalKg + " kg. "
+                            + "Free: " + processor.getFreeCapacity() + " kg.");
+
+        pending.forEach(i -> i.setProcessed(true));
+        itemRepo.saveAll(pending);
+        processor.setCurrentLoadKg(processor.getCurrentLoadKg() + totalKg);
+        processorRepo.save(processor);
+        center.setCurrentLoadKg(0.0);
+        centerRepo.save(center);
+
+        return "Dispatched " + pending.size() + " items ("
+                + totalKg + " kg) to '" + processor.getName() + "'";
+    }
 
     private void mapFields(CollectionCentres c,
                            CollectionCenterRequest req) {
@@ -140,4 +145,5 @@ public class CollectionCenterService {
                 .createdAt(c.getCreatedAt())
                 .build();
     }
+
 }

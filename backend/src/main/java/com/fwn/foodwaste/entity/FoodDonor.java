@@ -2,7 +2,9 @@ package com.fwn.foodwaste.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +12,8 @@ import java.util.List;
 @Entity
 @Table(name = "food_donors")
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class FoodDonor extends BaseEntity {
 
     @NotBlank(message = "Name Required")
