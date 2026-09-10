@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Modal from "../../components/ui/Modal";
 
-const emptyForm = { location: "", maxCapacity: "", processorId: "" };
+const emptyForm = { name: "", location: "", maxCapacity: "", processorId: "" };
 
 const CenterFormModal = ({ open, onClose, onSubmit, processors, center }) => {
   const isEdit = Boolean(center);
@@ -16,6 +16,7 @@ const CenterFormModal = ({ open, onClose, onSubmit, processors, center }) => {
       setForm(
         center
           ? {
+              name: center.name || "",
               location: center.location || "",
               maxCapacity: center.maxCapacity ?? "",
               processorId: center.processorId ?? "",
@@ -29,6 +30,9 @@ const CenterFormModal = ({ open, onClose, onSubmit, processors, center }) => {
 
   const validate = () => {
     const e = {};
+
+    if (!form.name.trim()) e.name = "Name is required";
+    else if (form.name.trim().length < 2) e.name = "Name must be at least 2 characters";
 
     if (!form.location.trim()) e.location = "Location is required";
     else if (form.location.trim().length < 3) e.location = "Location must be at least 3 characters";
@@ -59,17 +63,15 @@ const CenterFormModal = ({ open, onClose, onSubmit, processors, center }) => {
       return;
     }
 
-    const processor = processors.find((p) => p.id === +form.processorId);
-
     setSubmitting(true);
     setSubmitError("");
     try {
       await onSubmit({
-        ...(isEdit ? center : { id: Date.now(), currentLoad: 0, donors: [], wasteItems: [] }),
+        ...(isEdit ? center : {}),
+        name: form.name.trim(),
         location: form.location.trim(),
-        maxCapacity: +form.maxCapacity,
-        processorId: +form.processorId,
-        processorName: processor?.name || "",
+        maxCapacity: Number(form.maxCapacity),
+        processorId: Number(form.processorId),
       });
       onClose();
     } catch (err) {
@@ -98,6 +100,19 @@ const CenterFormModal = ({ open, onClose, onSubmit, processors, center }) => {
             {submitError}
           </p>
         )}
+
+        <div>
+          <label className="text-sm text-gray-600 mb-1 block">Center Name</label>
+          <input
+            type="text"
+            value={form.name}
+            disabled={submitting}
+            onChange={(e) => handleChange("name", e.target.value)}
+            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 disabled:bg-gray-100 ${errors.name ? "border-red-400" : "border-gray-300"}`}
+            placeholder="e.g. Mai Centre"
+          />
+          {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+        </div>
 
         <div>
           <label className="text-sm text-gray-600 mb-1 block">Location</label>

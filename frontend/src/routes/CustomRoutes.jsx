@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import Mainlayout from "../layout/Mainlayout";
 import AuthLayout from "../layout/AuthLayout";
@@ -52,6 +52,7 @@ const CustomRoutes = () => {
           <Route path="/centers" element={<Centers />} />
           <Route path="/processors" element={<Processors />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
         </Route>
       </Route>

@@ -23,11 +23,17 @@ export const register = async (userData) => {
 
 export const login = async (credentials) => {
     const response = await api.post(ENDPOINTS.LOGIN, credentials);
-    console.log(response);
-    
+
     if (response.token) {
         localStorage.setItem("wfms_token", response.token);
-        localStorage.setItem("wfms_role", response.roles[0]);
+        const role = response.roles?.[0] || "";
+        localStorage.setItem("wfms_role", role);
+        localStorage.setItem("user", JSON.stringify({
+            id: response.id,
+            username: response.username,
+            email: response.email,
+            role: role.replace(/^ROLE_/, ""),
+        }));
     }
 
     return response;

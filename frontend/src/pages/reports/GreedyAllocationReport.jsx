@@ -1,32 +1,5 @@
 import CapacityBar from "../../components/ui/CapacityBar";
 
-const DUMMY_PROCESSORS = [
-  {
-    id: 1,
-    name: "GreenCycle Processor",
-    location: "Kathmandu",
-    maxCapacity: 1000,
-    currentLoad: 720,
-    centersAssigned: ["Kathmandu - Baneshwor", "Lalitpur - Patan"],
-  },
-  {
-    id: 2,
-    name: "EcoWaste Solutions",
-    location: "Pokhara",
-    maxCapacity: 800,
-    currentLoad: 210,
-    centersAssigned: ["Pokhara - Lakeside"],
-  },
-  {
-    id: 3,
-    name: "BioConvert Ltd.",
-    location: "Lalitpur",
-    maxCapacity: 600,
-    currentLoad: 598,
-    centersAssigned: [],
-  },
-];
-
 const statusLabel = (current, max) => {
   const pct = (current / max) * 100;
   if (pct >= 100) return { label: "Full",        cls: "bg-red-100 text-red-700"      };
@@ -35,15 +8,21 @@ const statusLabel = (current, max) => {
   return                 { label: "Available",   cls: "bg-green-100 text-green-700"   };
 };
 
-const GreedyAllocationReport = () => {
-  const sorted = [...DUMMY_PROCESSORS].sort((a, b) => {
+const GreedyAllocationReport = ({ processors }) => {
+  const normalized = processors.map((processor) => ({
+    ...processor,
+    maxCapacity: Number(processor.maxProcessingCapacityKg || 0),
+    currentLoad: Number(processor.currentLoadKg || 0),
+    centersAssigned: [],
+  }));
+  const sorted = [...normalized].sort((a, b) => {
     const pctA = a.currentLoad / a.maxCapacity;
     const pctB = b.currentLoad / b.maxCapacity;
     return pctA - pctB; // least loaded first = greedy picks this
   });
 
-  const totalCapacity = DUMMY_PROCESSORS.reduce((s, p) => s + p.maxCapacity, 0);
-  const totalLoad     = DUMMY_PROCESSORS.reduce((s, p) => s + p.currentLoad, 0);
+  const totalCapacity = normalized.reduce((s, p) => s + p.maxCapacity, 0);
+  const totalLoad     = normalized.reduce((s, p) => s + p.currentLoad, 0);
   const available     = totalCapacity - totalLoad;
 
   return (

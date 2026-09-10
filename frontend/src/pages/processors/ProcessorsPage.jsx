@@ -1,4 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  createProcessor,
+  deleteProcessor,
+  getProcessorSupportingData,
+  getProcessors,
+  updateProcessor,
+} from "../../utils/processorApi";
+import { getCurrentRole, hasRole } from "../../utils/auth";
 import Table from "../../components/ui/Table";
 import StatCard from "../../components/ui/StatCard";
 import CapacityBar from "../../components/ui/CapacityBar";
@@ -6,43 +14,30 @@ import ProcessorFormModal from "./ProcessorFormModal";
 import DeleteProcessorModal from "./DeleteProcessorModal";
 import ProcessorDetailPanel from "./ProcessorDetailPanel";
 
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-const DUMMY_PROCESSORS = [
-  {
-    id: 1,
-    name: "GreenCycle Processor",
-    location: "Kathmandu",
-    maxCapacity: 1000,
-    currentLoad: 720,
-    totalProcessed: 4800,
-    centers: [
-      { id: 1, location: "Kathmandu - Baneshwor", currentLoad: 420, maxCapacity: 500 },
-      { id: 3, location: "Lalitpur - Patan",      currentLoad: 400, maxCapacity: 400 },
-    ],
-  },
-  {
-    id: 2,
-    name: "EcoWaste Solutions",
-    location: "Pokhara",
-    maxCapacity: 800,
-    currentLoad: 210,
-    totalProcessed: 3100,
-    centers: [
-      { id: 2, location: "Pokhara - Lakeside", currentLoad: 90, maxCapacity: 300 },
-    ],
-  },
-  {
-    id: 3,
-    name: "BioConvert Ltd.",
-    location: "Lalitpur",
-    maxCapacity: 600,
-    currentLoad: 598,
-    totalProcessed: 2200,
-    centers: [],
-  },
-];
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+const normalizeProcessor = (processor, centers = [], wasteItems = []) => {
+  const assignedCenters = centers
+    .filter((center) => center.processorId === processor.id)
+    .map((center) => ({
+      id: center.id,
+      location: center.location,
+      currentLoad: Number(center.currentLoadKg || 0),
+      maxCapacity: Number(center.maxCapacityKg || 0),
+    }));
+  const centerIds = new Set(assignedCenters.map((center) => center.id));
+  const totalProcessed = wasteItems
+    .filter((item) => item.processed && centerIds.has(item.collectionCenterId))
+    .reduce((sum, item) => sum + Number(item.weightKg || 0), 0);
+
+  return {
+    ...processor,
+    maxCapacity: Number(processor.maxProcessingCapacityKg || 0),
+    currentLoad: Number(processor.currentLoadKg || 0),
+    totalProcessed,
+    centers: assignedCenters,
+  };
+};
+
 const getStatus = (current, max) => {
   const pct = (current / max) * 100;
   if (pct >= 100) return { label: "Full",      cls: "bg-red-100 text-red-700"       };
@@ -52,7 +47,11 @@ const getStatus = (current, max) => {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const ProcessorsPage = () => {
-  const [processors, setProcessors] = useState(DUMMY_PROCESSORS);
+  const [processors, setProcessors] = useState([]);
+  const [centers, setCenters] = useState([]);
+  const [wasteItems, setWasteItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedProcessor, setSelectedProcessor] = useState(null);
   const [targetProcessor, setTargetProcessor]     = useState(null);
 
@@ -61,26 +60,54 @@ const ProcessorsPage = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Role check
-  const user    = JSON.parse(localStorage.getItem("user"));
-  const isAdmin = user?.role === "ADMIN";
+  const role = getCurrentRole();
+  const isAdmin = hasRole("ROLE_ADMIN");
+  const canManageProcessors = hasRole("ROLE_ADMIN") || hasRole("ROLE_OPERATOR");
+
+  const loadProcessors = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [processorData, [centerData, wasteData]] = await Promise.all([
+        getProcessors(),
+        getProcessorSupportingData(),
+      ]);
+      setCenters(centerData || []);
+      setWasteItems(wasteData || []);
+      setProcessors((processorData || []).map((processor) =>
+        normalizeProcessor(processor, centerData || [], wasteData || [])
+      ));
+    } catch (requestError) {
+      setError(requestError.message || "Unable to load processors.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (canManageProcessors) loadProcessors();
+  }, [canManageProcessors]);
 
   // ── Summary stats ──
-  const totalCapacity   = processors.reduce((s, p) => s + p.maxCapacity, 0);
   const totalLoad       = processors.reduce((s, p) => s + p.currentLoad, 0);
   const totalProcessed  = processors.reduce((s, p) => s + p.totalProcessed, 0);
   const nearFull        = processors.filter((p) => p.currentLoad / p.maxCapacity >= 0.8).length;
 
   // ── Handlers ──
-  const handleAdd = (newProcessor) => {
-    setProcessors((prev) => [...prev, newProcessor]);
+  const handleAdd = async (newProcessor) => {
+    const created = await createProcessor(newProcessor);
+    setProcessors((prev) => [...prev, normalizeProcessor(created, centers, wasteItems)]);
   };
 
-  const handleEdit = (updated) => {
-    setProcessors((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    if (selectedProcessor?.id === updated.id) setSelectedProcessor(updated);
+  const handleEdit = async (updated) => {
+    const saved = await updateProcessor(updated);
+    const normalized = normalizeProcessor(saved, centers, wasteItems);
+    setProcessors((prev) => prev.map((p) => (p.id === normalized.id ? normalized : p)));
+    if (selectedProcessor?.id === normalized.id) setSelectedProcessor(normalized);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    await deleteProcessor(targetProcessor.id);
     setProcessors((prev) => prev.filter((p) => p.id !== targetProcessor.id));
     if (selectedProcessor?.id === targetProcessor.id) setSelectedProcessor(null);
     setDeleteOpen(false);
@@ -89,13 +116,17 @@ const ProcessorsPage = () => {
   const openEdit   = (p) => { setTargetProcessor(p); setEditOpen(true);   };
   const openDelete = (p) => { setTargetProcessor(p); setDeleteOpen(true); };
 
+  if (!canManageProcessors) {
+    return <div className="p-6 text-sm text-red-600">You do not have access to processors. Current role: {role || "unknown"}.</div>;
+  }
+
   // ── Table columns ──
   const columns = [
     { key: "name",     label: "Name"     },
     { key: "location", label: "Location" },
     {
       key: "capacity",
-      label: "Capacity",
+      label: "Current Load / Max Capacity",
       render: (row) => (
         <div className="min-w-[160px]">
           <CapacityBar current={row.currentLoad} max={row.maxCapacity} />
@@ -187,8 +218,15 @@ const ProcessorsPage = () => {
         <StatCard label="Ever Processed"    value={`${totalProcessed} kg`} icon="✅" color="green" />
       </div>
 
+      {error && (
+        <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>{error}</span>
+          <button onClick={loadProcessors} className="font-semibold underline">Retry</button>
+        </div>
+      )}
+
       {/* Table */}
-      <Table columns={columns} data={processors} />
+      {loading ? <p className="text-gray-500">Loading processors...</p> : <Table columns={columns} data={processors} />}
 
       {/* Detail Panel */}
       <ProcessorDetailPanel

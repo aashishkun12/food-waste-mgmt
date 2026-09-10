@@ -1,77 +1,64 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal";
 
 const WASTE_TYPES = ["VEGETABLES", "DAIRY", "GRAINS", "MEAT", "FRUITS", "BEVERAGES", "OTHER"];
+const emptyForm = { weight: "", expiry: "", type: "VEGETABLES", donorId: "", centerId: "" };
+const getToday = () => new Date().toISOString().split("T")[0];
 
-const DUMMY_DONORS = [
-  { id: 1, name: "Green Farm Foods" },
-  { id: 2, name: "Fresh Market" },
-  { id: 3, name: "Pokhara Organics" },
-];
-
-const DUMMY_CENTERS = [
-  { id: 1, location: "Kathmandu - Baneshwor" },
-  { id: 2, location: "Pokhara - Lakeside" },
-  { id: 3, location: "Lalitpur - Patan" },
-];
-
-const emptyForm = {
-  weight: "",
-  expiry: "",
-  type: "VEGETABLES",
-  donorId: "",
-  centerId: "",
-};
-
-const WasteFormModal = ({ open, onClose, onSubmit, item }) => {
-  const isEdit = !!item;
+const WasteFormModal = ({ open, onClose, onSubmit, item, donors = [], centers = [] }) => {
+  const isEdit = Boolean(item);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    if (item) {
-      setForm({
-        weight: item.weight,
-        expiry: item.expiry,
-        type: item.type,
-        donorId: item.donorId,
-        centerId: item.centerId,
-      });
-    } else {
-      setForm(emptyForm);
-    }
+    if (!open) return;
+    setForm(item ? {
+      weight: item.weight ?? "",
+      expiry: item.expiry || "",
+      type: item.type || "VEGETABLES",
+      donorId: item.donorId ?? "",
+      centerId: item.centerId ?? "",
+    } : emptyForm);
     setErrors({});
-  }, [item, open]);
+    setSubmitError("");
+  }, [open, item]);
 
   const validate = () => {
-    const e = {};
-    if (!form.weight || +form.weight <= 0) e.weight = "Valid weight is required";
-    if (!form.expiry) e.expiry = "Expiration date is required";
-    if (!form.donorId) e.donorId = "Donor is required";
-    if (!form.centerId) e.centerId = "Collection center is required";
-    return e;
+    const nextErrors = {};
+    if (!form.weight || Number(form.weight) <= 0) nextErrors.weight = "Valid weight is required";
+    if (!form.expiry) nextErrors.expiry = "Expiration date is required";
+    else if (new Date(`${form.expiry}T00:00:00`) <= new Date()) nextErrors.expiry = "Expiration date must be in the future";
+    if (!form.donorId) nextErrors.donorId = "Donor is required";
+    if (!form.centerId) nextErrors.centerId = "Collection center is required";
+    return nextErrors;
   };
 
-  const handleSubmit = () => {
-    const e = validate();
-    if (Object.keys(e).length > 0) { setErrors(e); return; }
+  const handleSubmit = async () => {
+    const nextErrors = validate();
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
 
-    const donor = DUMMY_DONORS.find((d) => d.id === +form.donorId);
-    const center = DUMMY_CENTERS.find((c) => c.id === +form.centerId);
-
-    onSubmit({
-      ...(item || {}),
-      id: item?.id || Date.now(),
-      weight: +form.weight,
-      expiry: form.expiry,
-      type: form.type,
-      donorId: +form.donorId,
-      donorName: donor?.name || "",
-      centerId: +form.centerId,
-      centerLocation: center?.location || "",
-      processed: item?.processed || false,
-    });
-    onClose();
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      await onSubmit({
+        ...(item || {}),
+        weight: Number(form.weight),
+        expiry: form.expiry,
+        type: form.type,
+        donorId: Number(form.donorId),
+        centerId: Number(form.centerId),
+      });
+      onClose();
+    } catch (requestError) {
+      setSubmitError(requestError.message || `Failed to ${isEdit ? "update" : "add"} waste item.`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const field = (key, label, content) => (
@@ -85,75 +72,26 @@ const WasteFormModal = ({ open, onClose, onSubmit, item }) => {
   return (
     <Modal open={open} title={isEdit ? "Edit Waste Item" : "Add Waste Item"} onClose={onClose}>
       <div className="flex flex-col gap-3">
-
-        {/* Waste Type */}
-        {field("type", "Waste Type",
-          <select
-            value={form.type}
-            onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-            className="border border-gray-300 rounded w-full p-2 text-sm focus:outline-none focus:border-green-500"
-          >
-            {WASTE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        )}
-
-        {/* Weight */}
-        {field("weight", "Weight (kg)",
-          <input
-            type="number"
-            value={form.weight}
-            onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
-            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 ${errors.weight ? "border-red-400" : "border-gray-300"}`}
-            placeholder="e.g. 50"
-            min={1}
-          />
-        )}
-
-        {/* Expiry */}
-        {field("expiry", "Expiration Date",
-          <input
-            type="date"
-            value={form.expiry}
-            onChange={(e) => setForm((f) => ({ ...f, expiry: e.target.value }))}
-            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 ${errors.expiry ? "border-red-400" : "border-gray-300"}`}
-          />
-        )}
-
-        {/* Donor */}
-        {field("donorId", "Donor",
-          <select
-            value={form.donorId}
-            onChange={(e) => setForm((f) => ({ ...f, donorId: e.target.value }))}
-            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 ${errors.donorId ? "border-red-400" : "border-gray-300"}`}
-          >
-            <option value="">Select donor</option>
-            {DUMMY_DONORS.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        )}
-
-        {/* Collection Center */}
-        {field("centerId", "Collection Center",
-          <select
-            value={form.centerId}
-            onChange={(e) => setForm((f) => ({ ...f, centerId: e.target.value }))}
-            className={`border rounded w-full p-2 text-sm focus:outline-none focus:border-green-500 ${errors.centerId ? "border-red-400" : "border-gray-300"}`}
-          >
-            <option value="">Select center</option>
-            {DUMMY_CENTERS.map((c) => <option key={c.id} value={c.id}>{c.location}</option>)}
-          </select>
-        )}
-
+        {submitError && <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded p-2">{submitError}</p>}
+        {field("type", "Waste Type", <select value={form.type} disabled={submitting} onChange={(event) => setForm((previous) => ({ ...previous, type: event.target.value }))} className="border border-gray-300 rounded w-full p-2 text-sm">
+          {WASTE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+        </select>)}
+        {field("weight", "Weight (kg)", <input type="number" min="0.01" value={form.weight} disabled={submitting} onChange={(event) => setForm((previous) => ({ ...previous, weight: event.target.value }))} className="border border-gray-300 rounded w-full p-2 text-sm" />)}
+        {field("expiry", "Expiration Date", <input type="date" min={getToday()} value={form.expiry} disabled={submitting} onChange={(event) => setForm((previous) => ({ ...previous, expiry: event.target.value }))} className="border border-gray-300 rounded w-full p-2 text-sm" />)}
+        {field("donorId", "Donor", <select value={form.donorId} disabled={submitting} onChange={(event) => setForm((previous) => ({ ...previous, donorId: event.target.value }))} className="border border-gray-300 rounded w-full p-2 text-sm">
+          <option value="">Select donor</option>
+          {donors.map((donor) => <option key={donor.id} value={donor.id}>{donor.name}</option>)}
+        </select>)}
+        {field("centerId", "Collection Center", <select value={form.centerId} disabled={submitting} onChange={(event) => setForm((previous) => ({ ...previous, centerId: event.target.value }))} className="border border-gray-300 rounded w-full p-2 text-sm">
+          <option value="">Select center</option>
+          {centers.map((center) => <option key={center.id} value={center.id}>{center.name ? `${center.name} - ${center.location}` : center.location}</option>)}
+        </select>)}
+        {donors.length === 0 && <p className="text-xs text-gray-500">No donors are available.</p>}
+        {centers.length === 0 && <p className="text-xs text-gray-500">No collection centers are available.</p>}
       </div>
       <div className="flex justify-end gap-2 mt-5">
-        <button onClick={onClose} className="px-4 py-2 border rounded text-sm text-gray-600 hover:bg-gray-50">
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          className={`px-4 py-2 text-white rounded text-sm ${isEdit ? "bg-yellow-500 hover:bg-yellow-600" : "bg-green-600 hover:bg-green-700"}`}
-        >
-          {isEdit ? "Save Changes" : "Add Item"}
-        </button>
+        <button onClick={onClose} disabled={submitting} className="px-4 py-2 border rounded text-sm text-gray-600 disabled:opacity-50">Cancel</button>
+        <button onClick={handleSubmit} disabled={submitting} className={`px-4 py-2 text-white rounded text-sm disabled:opacity-50 ${isEdit ? "bg-yellow-500" : "bg-green-600"}`}>{submitting ? "Saving..." : isEdit ? "Save Changes" : "Add Item"}</button>
       </div>
     </Modal>
   );
