@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import Table from "../../components/ui/Table";
+import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import CapacityBar from "../../components/ui/CapacityBar";
 
@@ -103,13 +103,19 @@ const Centers = () => {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [dispatchOpen, setDispatchOpen] = useState(false);
 
+  const formatMetric = (value) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(Number(value || 0));
+
   // ── Summary stats ──
   const totalCenters = centers.length;
   const nearCapacity = centers.filter(
     (c) => c.currentLoad / c.maxCapacity >= 0.8
   ).length;
-  const totalLoad = centers.reduce((s, c) => s + c.currentLoad, 0);
-  const totalCapacity = centers.reduce((s, c) => s + c.maxCapacity, 0);
+  const totalLoad = Number(centers.reduce((s, c) => s + c.currentLoad, 0).toFixed(2));
+  const totalCapacity = Number(centers.reduce((s, c) => s + c.maxCapacity, 0).toFixed(2));
 
   // ── Handlers ──
   const handleAdd = async (newCenter) => {
@@ -131,6 +137,9 @@ const Centers = () => {
   };
 
   const handleDispatch = async () => {
+    if (!targetCenter) return;
+    if (!targetCenter.processorName || !targetCenter.wasteItems?.length) return;
+
     await dispatchCenter(targetCenter.id);
     await loadCenters();
     setSelectedCenter(null);
@@ -146,13 +155,14 @@ const Centers = () => {
 
   // ── Table columns ──
   const columns = [
-    { key: "name", label: "Name" },
-    { key: "location", label: "Location" },
+    { key: "name", label: "Name", width: "w-32" },
+    { key: "location", label: "Location", width: "w-40" },
     {
       key: "capacity",
       label: "Capacity",
+      width: "w-52",
       render: (row) => (
-        <div className="min-w-[160px]">
+        <div className="min-w-[150px]">
           <CapacityBar current={row.currentLoad} max={row.maxCapacity} />
         </div>
       ),
@@ -160,21 +170,23 @@ const Centers = () => {
     {
       key: "status",
       label: "Status",
+      width: "w-28",
       render: (row) => {
         const s = getCapacityStatus(row.currentLoad, row.maxCapacity);
         return (
-          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${s.cls}`}>
+          <span className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-1 rounded-full ${s.cls}`}>
             {s.label}
           </span>
         );
       },
     },
-    { key: "processorName", label: "Processor" },
+    { key: "processorName", label: "Processor", width: "w-36" },
     {
       key: "actions",
       label: "Actions",
+      width: "w-52",
       render: (row) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setSelectedCenter(row)}
             className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
@@ -233,8 +245,8 @@ const Centers = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total Centers" value={totalCenters} icon="🏭" color="blue" />
         <StatCard label="Near / At Capacity" value={nearCapacity} icon="⚠️" color="yellow" />
-        <StatCard label="Total Load (kg)" value={totalLoad} icon="📦" color="green" />
-        <StatCard label="Total Capacity (kg)" value={totalCapacity} icon="📊" color="green" />
+        <StatCard label="Total Load (kg)" value={formatMetric(totalLoad)} icon="📦" color="green" />
+        <StatCard label="Total Capacity (kg)" value={formatMetric(totalCapacity)} icon="📊" color="green" />
       </div>
 
       {error && (
@@ -245,7 +257,7 @@ const Centers = () => {
       )}
 
       {/* Table */}
-      {loading ? <p className="text-gray-500">Loading collection centers...</p> : <Table columns={columns} data={centers} />}
+      {loading ? <p className="text-gray-500">Loading collection centers...</p> : <PaginatedTable columns={columns} data={centers} pageSize={5} />}
 
       {/* Detail Panel */}
       <CenterDetailPanel

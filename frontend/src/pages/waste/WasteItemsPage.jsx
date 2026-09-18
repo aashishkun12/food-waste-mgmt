@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import Table from "../../components/ui/Table";
+import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import WasteFormModal from "./WasteFormModal";
 import DeleteWasteModal from "./DeleteWasteModal";
@@ -107,11 +107,10 @@ const WasteItemsPage = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6"><div><h2 className="text-2xl font-bold text-gray-800">Waste Items</h2><p className="text-sm text-gray-500 mt-1">Track and manage all food waste items</p></div><button onClick={() => setAddOpen(true)} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm">+ Add Waste Item</button></div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"><StatCard label="Total Items" value={items.length} icon="🗃️" color="blue" /><StatCard label="Total Weight" value={`${totalWeight} kg`} icon="⚖️" color="green" /><StatCard label="Pending" value={pendingItems} icon="⏳" color="yellow" /><StatCard label="Processed" value={items.length - pendingItems} icon="✅" color="green" /></div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"><StatCard label="Total Items" value={items.length} icon="🗃️" color="blue" /><StatCard label="Total Weight" value={`${parseFloat(totalWeight.toFixed(2))} kg`} icon="⚖️" color="green" /><StatCard label="Pending" value={pendingItems} icon="⏳" color="yellow" /><StatCard label="Processed" value={items.length - pendingItems} icon="✅" color="green" /></div>
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}</span><button onClick={loadItems} className="ml-4 font-semibold underline">Retry</button></div>}
       <WasteFilters filters={filters} onChange={(key, value) => setFilters((previous) => ({ ...previous, [key]: value }))} onReset={() => setFilters(DEFAULT_FILTERS)} />
-      <p className="text-sm text-gray-500 mb-3">Showing <span className="font-medium text-gray-700">{filtered.length}</span> of {items.length} items</p>
-      {loading ? <p className="text-gray-500">Loading waste items...</p> : <Table columns={columns} data={filtered} />}
+      {loading ? <p className="text-gray-500">Loading waste items...</p> : <PaginatedTable columns={columns} data={filtered} pageSize={7} />}
       <WasteFormModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={handleAdd} donors={donors} centers={centers} />
       <WasteFormModal open={editOpen} onClose={() => { setEditOpen(false); setTargetItem(null); }} onSubmit={handleEdit} item={targetItem} donors={donors} centers={centers} />
       <DeleteWasteModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} item={targetItem} />

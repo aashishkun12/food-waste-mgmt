@@ -70,7 +70,7 @@ const WasteFormModal = ({ open, onClose, onSubmit, item, donors = [], centers = 
   );
 
   return (
-    <Modal open={open} title={isEdit ? "Edit Waste Item" : "Add Waste Item"} onClose={onClose}>
+    <Modal open={open} title={isEdit ? "Edit Waste Item" : "Add Waste Item"} onClose={onClose} scrollable={false}>
       <div className="flex flex-col gap-3">
         {submitError && <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded p-2">{submitError}</p>}
         {field("type", "Waste Type", <select value={form.type} disabled={submitting} onChange={(event) => setForm((previous) => ({ ...previous, type: event.target.value }))} className="border border-gray-300 rounded w-full p-2 text-sm">

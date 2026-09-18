@@ -165,19 +165,25 @@ const DonorFormModal = ({ open, onClose, onSubmit, donor, centers }) => {
 
         <div>
           <label className="text-sm text-gray-600 mb-1 block">Collection Centers</label>
-          <div className={`border rounded p-2 flex flex-col gap-2 ${errors.collectionCenterIds ? "border-red-400" : "border-gray-300"}`}>
-            {centerOptions.length > 0 ? centerOptions.map((c) => (
-              <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.collectionCenterIds.includes(c.id)}
-                  disabled={submitting}
-                  onChange={() => toggleCenter(c.id)}
-                  className="accent-green-600"
-                />
-                {c.location}
-              </label>
-            )) : (
+          <div
+            className={`border rounded p-2 ${errors.collectionCenterIds ? "border-red-400" : "border-gray-300"}`}
+          >
+            {centerOptions.length > 0 ? (
+              <div className="max-h-52 overflow-y-auto pr-1 space-y-2">
+                {centerOptions.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.collectionCenterIds.includes(c.id)}
+                      disabled={submitting}
+                      onChange={() => toggleCenter(c.id)}
+                      className="accent-green-600"
+                    />
+                    {c.location}
+                  </label>
+                ))}
+              </div>
+            ) : (
               <p className="text-sm text-gray-500">No collection centers are available.</p>
             )}
           </div>

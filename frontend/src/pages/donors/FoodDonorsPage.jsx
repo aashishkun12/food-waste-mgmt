@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Table from "../../components/ui/Table";
+import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import { getCurrentRole, hasRole } from "../../utils/auth";
 import { getCenters } from "../../utils/centerApi";
 import { createDonor, deleteDonor, getDonors, updateDonor } from "../../utils/donorApi";
 import DonorFormModal from "./DonorFormModal";
 import DeleteDonorModal from "./DeleteDonorModal";
-import DonorDetailPanel from "./DonorDetailPanel";
+import DonorDetailPopup from "./DonorDetailPopup";
 
 const normalizeDonor = (donor, centers) => {
   const locations = donor.collectionCenterLocations || [];
@@ -94,16 +94,11 @@ const FoodDonorsPage = () => {
     { key: "name", label: "Name" },
     { key: "address", label: "Address" },
     { key: "contactEmail", label: "Email" },
-    { key: "contactPhone", label: "Phone" },
-    {
-      key: "totalDonations",
-      label: "Donations",
-      render: (row) => <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 text-sm font-semibold">{row.totalDonations}</span>,
-    },
     {
       key: "centers",
       label: "Centers",
       render: (row) => <span className="text-sm text-gray-600">{row.centers.length} center{row.centers.length !== 1 ? "s" : ""}</span>,
+      width: "w-28",
     },
     {
       key: "actions",
@@ -138,9 +133,12 @@ const FoodDonorsPage = () => {
       </div>
 
       {error && <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}</span><button onClick={loadDonors} className="font-semibold underline">Retry</button></div>}
-      {loading ? <p className="text-gray-500">Loading donors...</p> : <Table columns={columns} data={donors} />}
+      {loading ? <p className="text-gray-500">Loading donors...</p> : <PaginatedTable columns={columns} data={donors} pageSize={8} />}
 
-      <DonorDetailPanel donor={selectedDonor} onClose={() => setSelectedDonor(null)} />
+      {selectedDonor && (
+        <DonorDetailPopup donor={selectedDonor} onClose={() => setSelectedDonor(null)} />
+      )}
+
       <DonorFormModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={handleAdd} centers={centers} />
       <DonorFormModal open={editOpen} onClose={() => { setEditOpen(false); setTargetDonor(null); }} onSubmit={handleEdit} donor={targetDonor} centers={centers} />
       <DeleteDonorModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} donor={targetDonor} />

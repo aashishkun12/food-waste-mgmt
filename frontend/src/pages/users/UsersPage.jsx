@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Table from "../../components/ui/Table";
+import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import ToggleStatusModal from "./ToggleStatusModal";
 import { getCurrentRole, hasRole } from "../../utils/auth";
@@ -93,11 +93,12 @@ const UsersPage = () => {
   const adminCount = users.filter((user) => getDisplayRole(user) === "ADMIN").length;
 
   const columns = [
-    { key: "username", label: "Username" },
-    { key: "email", label: "Email" },
+    { key: "username", label: "Username", width: "w-32" },
+    { key: "email", label: "Email", width: "w-64" },
     {
       key: "roles",
       label: "Role",
+      width: "w-36",
       render: (user) => (
         <select
           value={getDisplayRole(user)}
@@ -112,11 +113,13 @@ const UsersPage = () => {
     {
       key: "active",
       label: "Status",
+      width: "w-24",
       render: (user) => <span className={`inline-flex items-center justify-center w-20 px-2 py-1 text-xs font-semibold rounded-full ${user.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{user.active ? "Active" : "Inactive"}</span>,
     },
     {
       key: "actions",
       label: "Actions",
+      width: "w-32",
       render: (user) => (
         <button
           onClick={() => setStatusTarget(user)}
@@ -147,7 +150,7 @@ const UsersPage = () => {
       </div>
 
       {error && <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}</span><button onClick={loadUsers} className="font-semibold underline">Retry</button></div>}
-      {loading ? <p className="text-gray-500">Loading users...</p> : <Table columns={columns} data={filteredUsers} />}
+      {loading ? <p className="text-gray-500">Loading users...</p> : <PaginatedTable columns={columns} data={filteredUsers} pageSize={8} />}
 
       {roleTarget && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">

@@ -7,7 +7,7 @@ import {
   updateProcessor,
 } from "../../utils/processorApi";
 import { getCurrentRole, hasRole } from "../../utils/auth";
-import Table from "../../components/ui/Table";
+import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import CapacityBar from "../../components/ui/CapacityBar";
 import ProcessorFormModal from "./ProcessorFormModal";
@@ -88,9 +88,15 @@ const ProcessorsPage = () => {
     if (canManageProcessors) loadProcessors();
   }, [canManageProcessors]);
 
+  const formatMetric = (value) =>
+    new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(Number(value || 0));
+
   // ── Summary stats ──
-  const totalLoad       = processors.reduce((s, p) => s + p.currentLoad, 0);
-  const totalProcessed  = processors.reduce((s, p) => s + p.totalProcessed, 0);
+  const totalLoad       = Number(processors.reduce((s, p) => s + p.currentLoad, 0).toFixed(2));
+  const totalProcessed  = Number(processors.reduce((s, p) => s + p.totalProcessed, 0).toFixed(2));
   const nearFull        = processors.filter((p) => p.currentLoad / p.maxCapacity >= 0.8).length;
 
   // ── Handlers ──
@@ -148,8 +154,9 @@ const ProcessorsPage = () => {
     {
       key: "totalProcessed",
       label: "Total Processed",
+      width: "w-40",
       render: (row) => (
-        <span className="text-sm font-medium text-gray-700">{row.totalProcessed} kg</span>
+        <span className="text-sm font-medium text-gray-700">{Number(row.totalProcessed || 0).toFixed(2)} kg</span>
       ),
     },
     {
@@ -165,7 +172,7 @@ const ProcessorsPage = () => {
       key: "actions",
       label: "Actions",
       render: (row) => (
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => setSelectedProcessor(row)}
             className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
@@ -214,8 +221,8 @@ const ProcessorsPage = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total Processors"  value={processors.length} icon="🏭" color="blue"   />
         <StatCard label="Near / At Capacity" value={nearFull}          icon="⚠️" color="yellow" />
-        <StatCard label="Total Load (kg)"   value={totalLoad}          icon="📦" color="green"  />
-        <StatCard label="Ever Processed"    value={`${totalProcessed} kg`} icon="✅" color="green" />
+        <StatCard label="Total Load (kg)"   value={formatMetric(totalLoad)} icon="📦" color="green"  />
+        <StatCard label="Ever Processed"    value={`${formatMetric(totalProcessed)} kg`} icon="✅" color="green" />
       </div>
 
       {error && (
@@ -226,7 +233,7 @@ const ProcessorsPage = () => {
       )}
 
       {/* Table */}
-      {loading ? <p className="text-gray-500">Loading processors...</p> : <Table columns={columns} data={processors} />}
+      {loading ? <p className="text-gray-500">Loading processors...</p> : <PaginatedTable columns={columns} data={processors} pageSize={5} />}
 
       {/* Detail Panel */}
       <ProcessorDetailPanel
