@@ -1,8 +1,16 @@
+data "http" "my_ip" {
+  url = "https://checkip.amazonaws.com"
+}
+
+locals {
+  my_public_ip = chomp(data.http.my_ip.response_body)
+}
+
 //VPC
 module "aws_network" {
   source = "./modules/network"
 
-  my_public_ip = var.my_public_ip
+  my_public_ip = local.my_public_ip
 
   vpc_cidr_block = var.vpc_cidr_block
 
@@ -54,7 +62,7 @@ module "aws_eks" {
   eks-node-2-subnet    = module.aws_network.eks-private-node-2-subnet-id
   node-sg              = [module.aws_network.node-sec-group-id]
 
-  my_public_ip = var.my_public_ip
+  my_public_ip = local.my_public_ip
 
   //node group
   eks_worker_role_arn = module.aws_iam.foodwaste_eks_worker_role_arn
