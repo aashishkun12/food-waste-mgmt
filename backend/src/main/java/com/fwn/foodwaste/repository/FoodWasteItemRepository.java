@@ -18,4 +18,6 @@ public interface FoodWasteItemRepository extends JpaRepository<FoodWasteItems, L
 
     List<FoodWasteItems> findByWasteType(WasteType wasteType);
 
+    List<FoodWasteItems> findByProcessedFalse();
+
 }

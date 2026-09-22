@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class CollectionCenterService {
 
+    private final ProcessorLoadBalancerService loadBalancer;
     private final CollectionCenterRepository centerRepo;
     private final ProcessorRepository processorRepo;
     private final FoodWasteItemRepository itemRepo;
@@ -67,13 +68,44 @@ public class CollectionCenterService {
 
 
 //    END-OF-DAY DISPATCH
-    public String dispatchToProcessor(Long centerId) {
-        CollectionCentres center = getCenter(centerId);
+//    public String dispatchToProcessor(Long centerId) {
+//        CollectionCentres center = getCenter(centerId);
+//
+//        if (center.getProcessor() == null)
+//            throw new ValidationException(
+//                    "No processor assigned to center '"
+//                            + center.getLocation() + "'");
+//
+//        List<FoodWasteItems> pending =
+//                itemRepo.findByCollectionCentre_IdAndProcessedFalse(centerId);
+//
+//        if (pending.isEmpty())
+//            return "No pending items at '" + center.getLocation() + "'";
+//
+//        double totalKg = pending.stream()
+//                .mapToDouble(FoodWasteItems::getWeightKg).sum();
+//
+//        Processors processor = center.getProcessor();
+//        if (processor.getFreeCapacity() < totalKg)
+//            throw new CapacityExceededException(
+//                    "Processor '" + processor.getName()
+//                            + "' cannot accept " + totalKg + " kg. "
+//                            + "Free: " + processor.getFreeCapacity() + " kg.");
+//
+//        pending.forEach(i -> i.setProcessed(true));
+//        itemRepo.saveAll(pending);
+//        processor.setCurrentLoadKg(processor.getCurrentLoadKg() + totalKg);
+//        processorRepo.save(processor);
+//        center.setCurrentLoadKg(0.0);
+//        centerRepo.save(center);
+//
+//        return "Dispatched " + pending.size() + " items ("
+//                + totalKg + " kg) to '" + processor.getName() + "'";
+//    }
 
-        if (center.getProcessor() == null)
-            throw new ValidationException(
-                    "No processor assigned to center '"
-                            + center.getLocation() + "'");
+    public String dispatchToProcessor(Long centerId) {
+
+        CollectionCentres center = getCenter(centerId);
 
         List<FoodWasteItems> pending =
                 itemRepo.findByCollectionCentre_IdAndProcessedFalse(centerId);
@@ -84,22 +116,23 @@ public class CollectionCenterService {
         double totalKg = pending.stream()
                 .mapToDouble(FoodWasteItems::getWeightKg).sum();
 
-        Processors processor = center.getProcessor();
-        if (processor.getFreeCapacity() < totalKg)
-            throw new CapacityExceededException(
-                    "Processor '" + processor.getName()
-                            + "' cannot accept " + totalKg + " kg. "
-                            + "Free: " + processor.getFreeCapacity() + " kg.");
+        // CHANGED — load balancer picks the best processor automatically
+        // instead of using center.getProcessor() which is hardcoded
+        Processors processor = loadBalancer.findBestProcessor(totalKg);
 
         pending.forEach(i -> i.setProcessed(true));
         itemRepo.saveAll(pending);
-        processor.setCurrentLoadKg(processor.getCurrentLoadKg() + totalKg);
+
+        processor.setCurrentLoadKg(
+                processor.getCurrentLoadKg() + totalKg);
         processorRepo.save(processor);
+
         center.setCurrentLoadKg(0.0);
         centerRepo.save(center);
 
-        return "Dispatched " + pending.size() + " items ("
-                + totalKg + " kg) to '" + processor.getName() + "'";
+        return "Dispatched " + pending.size()
+                + " items (" + totalKg + " kg)"
+                + " to '" + processor.getName() + "'";
     }
 
     private void mapFields(CollectionCentres c,
@@ -122,7 +155,7 @@ public class CollectionCenterService {
                         "Collection center not found: " + id));
     }
 
-    private CollectionCenterResponse toResponse(CollectionCentres c) {
+    public CollectionCenterResponse toResponse(CollectionCentres c) {
         double pct = c.getMaxCapicityKg() > 0
                 ? (c.getCurrentLoadKg() / c.getMaxCapicityKg()) * 100
                 : 0;

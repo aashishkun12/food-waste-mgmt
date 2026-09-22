@@ -1,5 +1,6 @@
 package com.fwn.foodwaste.service;
 
+import com.fwn.foodwaste.dto.Request.AutoAssignFoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Request.FoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Response.FoodWasteItemResponse;
 import com.fwn.foodwaste.entity.CollectionCentres;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class FoodWasteItemService {
+    private final GreedyCollectionCenterService greedyService;
     private final FoodWasteItemRepository itemRepo;
     private final FoodDonorRepository donorRepo;
     private final CollectionCenterRepository centerRepo;
@@ -145,7 +147,35 @@ public class FoodWasteItemService {
                         "Food waste item not found: " + id));
     }
 
-    private FoodWasteItemResponse toResponse(FoodWasteItems i) {
+    // auto assign method that uses greedy approach to select best collection centers
+    public FoodWasteItemResponse createWithAutoAssign(
+            AutoAssignFoodWasteItemRequest req) {
+
+        // Greedy picks the best center — no centerId needed from clients
+        CollectionCentres bestCenter =
+                greedyService.findBestCenter(req.getWeightKg());
+
+        FoodDonor donor = donorRepo.findById(req.getDonorId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Donor not found: " + req.getDonorId()));
+
+        FoodWasteItems item = FoodWasteItems.builder()
+                .weightKg(req.getWeightKg())
+                .expirationDate(req.getExpirationDate())
+                .wasteType(req.getWasteType())
+                .processed(false)
+                .donor(donor)
+                .collectionCentre(bestCenter)
+                .build();
+
+        bestCenter.setCurrentLoadKg(
+                bestCenter.getCurrentLoadKg() + req.getWeightKg());
+        centerRepo.save(bestCenter);
+
+        return toResponse(itemRepo.save(item));
+    }
+
+    public FoodWasteItemResponse toResponse(FoodWasteItems i) {
         long daysLeft = ChronoUnit.DAYS.between(
                 LocalDate.now(), i.getExpirationDate());
 

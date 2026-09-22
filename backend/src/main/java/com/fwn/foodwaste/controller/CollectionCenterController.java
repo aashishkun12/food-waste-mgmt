@@ -2,17 +2,11 @@ package com.fwn.foodwaste.controller;
 
 
 import com.fwn.foodwaste.dto.Request.CollectionCenterRequest;
-import com.fwn.foodwaste.dto.Request.FoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Response.CollectionCenterResponse;
-import com.fwn.foodwaste.dto.Response.FoodWasteItemResponse;
-import com.fwn.foodwaste.entity.FoodWasteItems;
-import com.fwn.foodwaste.entity.enums.WasteType;
+import com.fwn.foodwaste.entity.CollectionCentres;
 import com.fwn.foodwaste.service.CollectionCenterService;
+import com.fwn.foodwaste.service.GreedyCollectionCenterService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,6 +23,8 @@ import java.util.Map;
 @RequestMapping("/api/collection-centers")
 @RequiredArgsConstructor
 public class CollectionCenterController {
+
+    private final GreedyCollectionCenterService greedyService;
     private final CollectionCenterService service;
 
     @GetMapping
@@ -44,9 +40,6 @@ public class CollectionCenterController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.create(request));
     }
-
-
-
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -69,6 +62,22 @@ public class CollectionCenterController {
         String result = service.dispatchToProcessor(id);
         return ResponseEntity.ok(Map.of("message", result));
     }
+
+    // use to show which collection center is in best form
+    @GetMapping("/ranked")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<List<CollectionCenterResponse>> ranked() {
+        return ResponseEntity.ok(greedyService.getRankedCenters());
+    }
+
+//    public ResponseEntity<List<CollectionCenterResponse>> ranked() {
+//        return ResponseEntity.ok(
+//                greedyService.getRankedCenters()
+//                        .stream()
+//                        .map(this::toResponse)
+//                        .toList()
+//        );
+//    }
 
 
 

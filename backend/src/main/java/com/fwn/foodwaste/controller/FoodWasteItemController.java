@@ -1,9 +1,12 @@
 package com.fwn.foodwaste.controller;
 
 
+import com.fwn.foodwaste.dto.Request.AutoAssignFoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Request.FoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Response.FoodWasteItemResponse;
+import com.fwn.foodwaste.service.FefoProcessingService;
 import com.fwn.foodwaste.service.FoodWasteItemService;
+import com.fwn.foodwaste.service.GreedyCollectionCenterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,12 +15,15 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/food-waste-items")
 @RequiredArgsConstructor
 public class FoodWasteItemController {
 
+    private final FefoProcessingService fefoService;
+    private final GreedyCollectionCenterService greedyService;
     private final FoodWasteItemService itemService;
 
     @GetMapping
@@ -75,6 +81,38 @@ public class FoodWasteItemController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         itemService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // Greedy auto-assign (no centerId needed in body)
+    @PostMapping("/auto-assign")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<FoodWasteItemResponse> createWithAutoAssign(
+            @Valid @RequestBody AutoAssignFoodWasteItemRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(itemService.createWithAutoAssign(req));
+    }
+
+    // FEFO full queue
+    @GetMapping("/fefo-queue")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<List<FoodWasteItemResponse>> fefoQueue() {
+        return ResponseEntity.ok(fefoService.getFefoQueue());
+    }
+
+    // FEFO for one center
+    @GetMapping("/fefo-queue/center/{centerId}")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<List<FoodWasteItemResponse>> fefoQueueForCenter(
+            @PathVariable Long centerId) {
+        return ResponseEntity.ok(
+                fefoService.getFefoQueueForCenter(centerId));
+    }
+
+    // Urgency based on the date of food items
+    @GetMapping("/urgency")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<Map<String, Object>> urgency() {
+        return ResponseEntity.ok(fefoService.getUrgencyBands());
     }
 
 }

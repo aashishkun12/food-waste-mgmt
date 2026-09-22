@@ -1,5 +1,7 @@
 package com.fwn.foodwaste.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fwn.foodwaste.entity.enums.WasteType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Future;

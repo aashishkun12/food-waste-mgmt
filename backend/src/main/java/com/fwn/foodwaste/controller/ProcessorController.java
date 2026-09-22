@@ -2,6 +2,7 @@ package com.fwn.foodwaste.controller;
 
 import com.fwn.foodwaste.dto.Request.ProcessorRequest;
 import com.fwn.foodwaste.dto.Response.ProcessorResponse;
+import com.fwn.foodwaste.service.ProcessorLoadBalancerService;
 import com.fwn.foodwaste.service.ProcessorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,12 +12,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/processors")
 @RequiredArgsConstructor
 public class ProcessorController {
 
+    private final ProcessorLoadBalancerService loadBalancer;
     private final ProcessorService processorService;
 
     @GetMapping
@@ -54,5 +57,12 @@ public class ProcessorController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         processorService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // this is controller to balance the load to processors
+    @GetMapping("/load-summary")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<Map<String, Double>> loadSummary() {
+        return ResponseEntity.ok(loadBalancer.getLoadSummary());
     }
 }
