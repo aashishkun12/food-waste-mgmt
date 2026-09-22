@@ -7,10 +7,12 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [react(),tailwindcss()],
         server: {
+            host:true,
+            allowedHosts: ['.ap-south-1.elb.amazonaws.com'],
             port: 5173,
             proxy: {
                 "/api": {
-                    target: "http://localhost:8080",
+                    target: "http://backend-service:8080",
                     changeOrigin: true,
                 },
             },
