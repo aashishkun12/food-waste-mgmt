@@ -18,7 +18,7 @@ resource "aws_iam_role" "foodwaste_dev_eks_cluster_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "foodwaste_dev_eks_cluster_role_policy_attachment" {
-  role = aws_iam_role.foodwaste_dev_eks_cluster_role.name
+  role       = aws_iam_role.foodwaste_dev_eks_cluster_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
@@ -44,17 +44,17 @@ resource "aws_iam_role" "foodwaste_dev_eks_node_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "foodwaste_dev_eks_node_EKSWorkerNodePolicy" {
-  role = aws_iam_role.foodwaste_dev_eks_node_role.name
+  role       = aws_iam_role.foodwaste_dev_eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
 resource "aws_iam_role_policy_attachment" "foodwaste_dev_eks_node_EKSCNIPolicy" {
-  role = aws_iam_role.foodwaste_dev_eks_node_role.name
+  role       = aws_iam_role.foodwaste_dev_eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
 resource "aws_iam_role_policy_attachment" "foodwaste_dev_eks_node_AmazonEC2ConRegReadOnly" {
-  role = aws_iam_role.foodwaste_dev_eks_node_role.name
+  role       = aws_iam_role.foodwaste_dev_eks_node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 

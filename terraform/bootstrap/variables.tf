@@ -1,9 +1,9 @@
 variable "bucket-name" {
   description = "name for s3 bucket"
-  type = string
+  type        = string
 }
 
 variable "bucket-key" {
   description = "path to store state"
-  type = string
+  type        = string
 }

@@ -1,6 +1,6 @@
 // Create a vpc
 resource "aws_vpc" "foodwaste_dev_vpc" {
-  cidr_block = var.vpc_cidr_block
+  cidr_block           = var.vpc_cidr_block
   enable_dns_hostnames = true
   tags = {
     Name = "foodwaste-dev-vpc"
@@ -15,84 +15,84 @@ resource "aws_internet_gateway" "foodwaste_dev_igw" {
 }
 // Create public subnets
 resource "aws_subnet" "foodwaste_dev_public_subnet_1" {
-  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  vpc_id            = aws_vpc.foodwaste_dev_vpc.id
   availability_zone = var.availability_zone_1
-  cidr_block = var.public_cidr_block_1
+  cidr_block        = var.public_cidr_block_1
   tags = {
-    Name = "foodwaste_dev_public_subnet_1",
+    Name                     = "foodwaste_dev_public_subnet_1",
     "kubernetes.io/role/elb" = "1"
   }
 }
 
 resource "aws_subnet" "foodwaste_dev_public_subnet_2" {
-  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  vpc_id            = aws_vpc.foodwaste_dev_vpc.id
   availability_zone = var.availability_zone_2
-  cidr_block = var.public_cidr_block_2
+  cidr_block        = var.public_cidr_block_2
   tags = {
-    Name = "foodwaste_dev_public_subnet_2",
+    Name                     = "foodwaste_dev_public_subnet_2",
     "kubernetes.io/role/elb" = "1"
   }
 }
 
 // Create a route table
 resource "aws_route_table" "foodwaste_dev_rt_public" {
-    vpc_id = aws_vpc.foodwaste_dev_vpc.id
-    route {
-      cidr_block = "0.0.0.0/0"
-      gateway_id = aws_internet_gateway.foodwaste_dev_igw.id
-    }
-    tags = {
-      Name = "foodwaste_dev_rt_public"
-    }
+  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.foodwaste_dev_igw.id
+  }
+  tags = {
+    Name = "foodwaste_dev_rt_public"
+  }
 }
 
 // route table association
 resource "aws_route_table_association" "foodwaste_dev_public_rta_1" {
   route_table_id = aws_route_table.foodwaste_dev_rt_public.id
-  subnet_id = aws_subnet.foodwaste_dev_public_subnet_1.id
+  subnet_id      = aws_subnet.foodwaste_dev_public_subnet_1.id
 }
 
 resource "aws_route_table_association" "foodwaste_dev_public_rta_2" {
   route_table_id = aws_route_table.foodwaste_dev_rt_public.id
-  subnet_id = aws_subnet.foodwaste_dev_public_subnet_2.id
+  subnet_id      = aws_subnet.foodwaste_dev_public_subnet_2.id
 }
 
 
 // Create private subnet for node
 resource "aws_subnet" "foodwaste_dev_private_node_1" {
-  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  vpc_id            = aws_vpc.foodwaste_dev_vpc.id
   availability_zone = var.availability_zone_1
-  cidr_block = var.private_node_cidr_block_1
+  cidr_block        = var.private_node_cidr_block_1
   tags = {
-    Name = "foodwaste_dev_private_node_1",
+    Name                              = "foodwaste_dev_private_node_1",
     "kubernetes.io/role/internal-elb" = "1"
   }
 }
 
 resource "aws_subnet" "foodwaste_dev_private_node_2" {
-  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  vpc_id            = aws_vpc.foodwaste_dev_vpc.id
   availability_zone = var.availability_zone_2
-  cidr_block = var.private_node_cidr_block_2
+  cidr_block        = var.private_node_cidr_block_2
   tags = {
-    Name = "foodwaste_dev_private_node_2",
+    Name                              = "foodwaste_dev_private_node_2",
     "kubernetes.io/role/internal-elb" = "1"
   }
 }
 
 // Create private subnet for DB
 resource "aws_subnet" "foodwaste_dev_private_db_1" {
-  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  vpc_id            = aws_vpc.foodwaste_dev_vpc.id
   availability_zone = var.availability_zone_1
-  cidr_block = var.private_db_cidr_block_1
+  cidr_block        = var.private_db_cidr_block_1
   tags = {
     Name = "foodwaste_dev_private_db_1"
   }
 }
 
 resource "aws_subnet" "foodwaste_dev_private_db_2" {
-  vpc_id = aws_vpc.foodwaste_dev_vpc.id
+  vpc_id            = aws_vpc.foodwaste_dev_vpc.id
   availability_zone = var.availability_zone_2
-  cidr_block = var.private_db_cidr_block_2
+  cidr_block        = var.private_db_cidr_block_2
   tags = {
     Name = "foodwaste_dev_private_db_2"
   }
@@ -115,7 +115,7 @@ resource "aws_eip" "foodwaste_eip_2" {
 
 // NAT Gateway
 resource "aws_nat_gateway" "foodwaste_dev_nat_1" {
-  subnet_id = aws_subnet.foodwaste_dev_public_subnet_1.id
+  subnet_id     = aws_subnet.foodwaste_dev_public_subnet_1.id
   allocation_id = aws_eip.foodwaste_eip_1.id
   tags = {
     Name = "nat-gw-1"
@@ -123,7 +123,7 @@ resource "aws_nat_gateway" "foodwaste_dev_nat_1" {
 }
 
 resource "aws_nat_gateway" "foodwaste_dev_nat_2" {
-  subnet_id = aws_subnet.foodwaste_dev_public_subnet_2.id
+  subnet_id     = aws_subnet.foodwaste_dev_public_subnet_2.id
   allocation_id = aws_eip.foodwaste_eip_2.id
   tags = {
     Name = "nat-gw-2"
@@ -134,7 +134,7 @@ resource "aws_nat_gateway" "foodwaste_dev_nat_2" {
 resource "aws_route_table" "foodwaste_private_rt_1" {
   vpc_id = aws_vpc.foodwaste_dev_vpc.id
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.foodwaste_dev_nat_1.id
   }
   tags = {
@@ -145,7 +145,7 @@ resource "aws_route_table" "foodwaste_private_rt_1" {
 resource "aws_route_table" "foodwaste_private_rt_2" {
   vpc_id = aws_vpc.foodwaste_dev_vpc.id
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = aws_nat_gateway.foodwaste_dev_nat_2.id
   }
   tags = {
@@ -156,12 +156,12 @@ resource "aws_route_table" "foodwaste_private_rt_2" {
 // PRivate route table association
 resource "aws_route_table_association" "foodwaste_private_rta_1" {
   route_table_id = aws_route_table.foodwaste_private_rt_1.id
-  subnet_id = aws_subnet.foodwaste_dev_private_node_1.id
+  subnet_id      = aws_subnet.foodwaste_dev_private_node_1.id
 }
 
 resource "aws_route_table_association" "foodwaste_private_rta_2" {
   route_table_id = aws_route_table.foodwaste_private_rt_2.id
-  subnet_id = aws_subnet.foodwaste_dev_private_node_2.id
+  subnet_id      = aws_subnet.foodwaste_dev_private_node_2.id
 }
 
 // Security groups

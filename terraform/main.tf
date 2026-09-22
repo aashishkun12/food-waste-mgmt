@@ -22,22 +22,22 @@ module "aws_network" {
 }
 
 //RDS
-# module "aws_rds" {
-#   source = "./modules/rds"
+module "aws_rds" {
+  source = "./modules/rds"
 
-#   private_db_subnet_id_1 = module.aws_network.private_db_subnet_id_1
-#   private_db_subnet_id_2 = module.aws_network.private_db_subnet_id_2
-#   db_security_group_id   = [module.aws_network.db_security_group_id]
+  private_db_subnet_id_1 = module.aws_network.private_db_subnet_id_1
+  private_db_subnet_id_2 = module.aws_network.private_db_subnet_id_2
+  db_security_group_id   = [module.aws_network.db_security_group_id]
 
-#   db_name     = var.db_name
-#   db_username = var.db_username
-#   db_password = var.db_password
-# }
+  db_name     = var.db_name
+  db_username = var.db_username
+  db_password = var.db_password
+}
 
 //ECR
-# module "aws_ecr" {
-#   source = "./modules/ecr"
-# }
+module "aws_ecr" {
+  source = "./modules/ecr"
+}
 
 // IAM
 module "aws_iam" {
@@ -67,10 +67,10 @@ module "alb_controller" {
     helm = helm
   }
 
-  cluster_name             = module.aws_eks.cluster_name
-  region                   = var.aws_region
-  vpc_id                   = module.aws_network.vpc_id
-  alb_controller_role_arn  = module.aws_iam.alb_controller_role_arn
+  cluster_name            = module.aws_eks.cluster_name
+  region                  = var.aws_region
+  vpc_id                  = module.aws_network.vpc_id
+  alb_controller_role_arn = module.aws_iam.alb_controller_role_arn
 
   depends_on = [module.aws_eks]
 }

@@ -1,14 +1,14 @@
 resource "aws_eks_cluster" "foodwaste_eks_cluster" {
   name = "foodwaste_eks_cluster"
-   access_config {
+  access_config {
     authentication_mode = "API"
   }
 
   role_arn = var.eks_cluster_role_arn
-  version = "1.36"
+  version  = "1.36"
 
   vpc_config {
-    subnet_ids = [var.eks-node-1-subnet, var.eks-node-2-subnet]
+    subnet_ids         = [var.eks-node-1-subnet, var.eks-node-2-subnet]
     security_group_ids = var.node-sg
 
     endpoint_public_access  = true
@@ -16,18 +16,18 @@ resource "aws_eks_cluster" "foodwaste_eks_cluster" {
 
     public_access_cidrs = [
       "${var.my_public_ip}/32"
-  ]
+    ]
   }
 }
 
 resource "aws_eks_node_group" "foodwaste_eks_node_group" {
   node_group_name = "foodwaste-eks-node-group"
-  cluster_name = aws_eks_cluster.foodwaste_eks_cluster.name
-  node_role_arn = var.eks_worker_role_arn
-  ami_type = "AL2023_x86_64_STANDARD"
-  instance_types = ["t3.small"]
-  disk_size = "20"
-  subnet_ids = [var.eks-node-1-subnet, var.eks-node-2-subnet]
+  cluster_name    = aws_eks_cluster.foodwaste_eks_cluster.name
+  node_role_arn   = var.eks_worker_role_arn
+  ami_type        = "AL2023_x86_64_STANDARD"
+  instance_types  = ["t3.small"]
+  disk_size       = "20"
+  subnet_ids      = [var.eks-node-1-subnet, var.eks-node-2-subnet]
   scaling_config {
     desired_size = 2
     max_size     = 2
