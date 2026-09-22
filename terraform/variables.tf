@@ -2,6 +2,10 @@
 variable "my_public_ip" {
   type = string
 }
+//Region
+variable "aws_region" {
+  type = string
+}
 
 // VPC
 

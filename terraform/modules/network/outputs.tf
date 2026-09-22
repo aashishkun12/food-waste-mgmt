@@ -21,3 +21,7 @@ output "eks-private-node-2-subnet-id" {
 output "node-sec-group-id" {
   value = aws_security_group.foodwaste_node_sg.id
 }
+
+output "vpc_id" {
+  value = aws_vpc.foodwaste_dev_vpc.id
+}

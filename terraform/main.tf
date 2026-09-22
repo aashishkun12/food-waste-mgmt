@@ -60,3 +60,18 @@ module "aws_eks" {
   eks_worker_role_arn = module.aws_iam.foodwaste_eks_worker_role_arn
 }
 
+module "alb_controller" {
+  source = "./modules/alb-controller"
+
+  providers = {
+    helm = helm
+  }
+
+  cluster_name             = module.aws_eks.cluster_name
+  region                   = var.aws_region
+  vpc_id                   = module.aws_network.vpc_id
+  alb_controller_role_arn  = module.aws_iam.alb_controller_role_arn
+
+  depends_on = [module.aws_eks]
+}
+

@@ -20,10 +20,6 @@ resource "aws_eks_cluster" "foodwaste_eks_cluster" {
   }
 }
 
-output "eks-cluster-security-group" {
-  value = aws_eks_cluster.foodwaste_eks_cluster.vpc_config[0].cluster_security_group_id
-}
-
 resource "aws_eks_node_group" "foodwaste_eks_node_group" {
   node_group_name = "foodwaste-eks-node-group"
   cluster_name = aws_eks_cluster.foodwaste_eks_cluster.name
