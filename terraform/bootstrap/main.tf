@@ -4,6 +4,7 @@ provider "aws" {
 
 resource "aws_s3_bucket" "foodwaste_dev_tfstate" {
   bucket = var.bucket-name
+  force_destroy = true
   tags = {
     Name = "foodwaste-dev-tfstate-12"
   }
