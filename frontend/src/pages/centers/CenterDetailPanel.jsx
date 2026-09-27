@@ -17,7 +17,12 @@ const CloseIcon = () => (
   </svg>
 );
 
-const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch }) => {
+const daysUntil = (expiry) => {
+  if (!expiry) return null;
+  return Math.ceil((new Date(`${expiry}T00:00:00`) - new Date()) / 86400000);
+};
+
+const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch, onDispatchItem }) => {
   useEffect(() => {
     if (!center) return undefined;
 
@@ -40,9 +45,6 @@ const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch }) => {
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
         <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-              Center Details
-            </p>
             <h3 className="text-xl font-bold text-gray-800 mt-1">{center.location}</h3>
             <p className="text-sm text-gray-500 mt-1">Processor: {center.processorName}</p>
           </div>
@@ -72,8 +74,7 @@ const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch }) => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+          <div>
               <h4 className="font-semibold text-gray-700 mb-2">Current Waste Items</h4>
               {center.wasteItems.length === 0 ? (
                 <p className="text-sm text-gray-400">No waste items currently held.</p>
@@ -82,8 +83,11 @@ const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch }) => {
                   <thead className="bg-gray-100">
                     <tr>
                       <th className="p-2 text-left font-medium">Type</th>
+                      <th className="p-2 text-left font-medium">Donor</th>
                       <th className="p-2 text-left font-medium">Weight</th>
+                      <th className="p-2 text-left font-medium">Status</th>
                       <th className="p-2 text-left font-medium">Expiry</th>
+                      <th className="p-2 text-left font-medium">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -94,30 +98,28 @@ const CenterDetailPanel = ({ center, onClose, onAccept, onDispatch }) => {
                             {item.type}
                           </span>
                         </td>
+                        <td className="p-2 text-gray-700">{item.donorName}</td>
                         <td className="p-2">{item.weight} kg</td>
-                        <td className="p-2 text-gray-500">{item.expiry}</td>
+                        <td className="p-2 text-xs font-medium text-gray-600">{item.status}</td>
+                        <td className={`p-2 ${daysUntil(item.expiry) <= 3 ? "font-semibold text-red-600" : "text-gray-500"}`}>
+                          {item.expiry}
+                          {daysUntil(item.expiry) <= 3 && <span className="ml-1 text-xs">Near expiry</span>}
+                        </td>
+                        <td className="p-2">
+                          {onDispatchItem && item.status === "ACCEPTED" && (
+                            <button
+                              onClick={() => onDispatchItem(center, item)}
+                              className="whitespace-nowrap rounded bg-purple-600 px-2 py-1 text-xs font-medium text-white hover:bg-purple-700"
+                            >
+                              Dispatch item
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Donors Delivering Here</h4>
-              {center.donors.length === 0 ? (
-                <p className="text-sm text-gray-400">No donors assigned.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {center.donors.map((donor) => (
-                    <li key={donor.id} className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
-                      {donor.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
 
           <div className="flex justify-end gap-2 mt-6">

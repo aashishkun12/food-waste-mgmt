@@ -13,6 +13,7 @@ import CapacityBar from "../../components/ui/CapacityBar";
 import ProcessorFormModal from "./ProcessorFormModal";
 import DeleteProcessorModal from "./DeleteProcessorModal";
 import ProcessorDetailPanel from "./ProcessorDetailPanel";
+import { completeWasteProcessing } from "../../utils/wasteApi";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const normalizeProcessor = (processor, centers = [], wasteItems = []) => {
@@ -28,12 +29,16 @@ const normalizeProcessor = (processor, centers = [], wasteItems = []) => {
   const totalProcessed = wasteItems
     .filter((item) => item.processed && centerIds.has(item.collectionCenterId))
     .reduce((sum, item) => sum + Number(item.weightKg || 0), 0);
+  const processingItems = wasteItems.filter(
+    (item) => item.dispatched && !item.processed && centerIds.has(item.collectionCenterId)
+  );
 
   return {
     ...processor,
     maxCapacity: Number(processor.maxProcessingCapacityKg || 0),
     currentLoad: Number(processor.currentLoadKg || 0),
     totalProcessed,
+    processingItems,
     centers: assignedCenters,
   };
 };
@@ -63,6 +68,7 @@ const ProcessorsPage = () => {
   const role = getCurrentRole();
   const isAdmin = hasRole("ROLE_ADMIN");
   const canManageProcessors = hasRole("ROLE_ADMIN") || hasRole("ROLE_OPERATOR");
+  const canEditProcessors = isAdmin;
 
   const loadProcessors = async () => {
     setLoading(true);
@@ -119,6 +125,12 @@ const ProcessorsPage = () => {
     setDeleteOpen(false);
   };
 
+  const handleCompleteProcessing = async (itemId) => {
+    await completeWasteProcessing(itemId);
+    await loadProcessors();
+    setSelectedProcessor(null);
+  };
+
   const openEdit   = (p) => { setTargetProcessor(p); setEditOpen(true);   };
   const openDelete = (p) => { setTargetProcessor(p); setDeleteOpen(true); };
 
@@ -128,13 +140,14 @@ const ProcessorsPage = () => {
 
   // ── Table columns ──
   const columns = [
-    { key: "name",     label: "Name"     },
-    { key: "location", label: "Location" },
+    { key: "name",     label: "Name", width: "w-44" },
+    { key: "location", label: "Location", width: "w-28" },
     {
       key: "capacity",
       label: "Current Load / Max Capacity",
+      width: "w-56",
       render: (row) => (
-        <div className="min-w-[160px]">
+        <div className="min-w-[190px]">
           <CapacityBar current={row.currentLoad} max={row.maxCapacity} />
         </div>
       ),
@@ -142,10 +155,11 @@ const ProcessorsPage = () => {
     {
       key: "status",
       label: "Status",
+      width: "w-28",
       render: (row) => {
         const s = getStatus(row.currentLoad, row.maxCapacity);
         return (
-          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${s.cls}`}>
+          <span className={`inline-flex whitespace-nowrap text-xs font-semibold px-2 py-1 rounded-full ${s.cls}`}>
             {s.label}
           </span>
         );
@@ -154,7 +168,7 @@ const ProcessorsPage = () => {
     {
       key: "totalProcessed",
       label: "Total Processed",
-      width: "w-40",
+      width: "w-32",
       render: (row) => (
         <span className="text-sm font-medium text-gray-700">{Number(row.totalProcessed || 0).toFixed(2)} kg</span>
       ),
@@ -162,6 +176,7 @@ const ProcessorsPage = () => {
     {
       key: "centers",
       label: "Centers",
+      width: "w-24",
       render: (row) => (
         <span className="text-sm text-gray-600">
           {row.centers?.length || 0} center{row.centers?.length !== 1 ? "s" : ""}
@@ -171,6 +186,7 @@ const ProcessorsPage = () => {
     {
       key: "actions",
       label: "Actions",
+      width: "w-44",
       render: (row) => (
         <div className="flex flex-wrap items-center gap-1">
           <button
@@ -179,12 +195,14 @@ const ProcessorsPage = () => {
           >
             View
           </button>
-          <button
-            onClick={() => openEdit(row)}
-            className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-          >
-            Edit
-          </button>
+          {canEditProcessors && (
+            <button
+              onClick={() => openEdit(row)}
+              className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
+            >
+              Edit
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={() => openDelete(row)}
@@ -206,15 +224,17 @@ const ProcessorsPage = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Processors</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Manage waste processing facilities and their capacity
+            {isAdmin ? "Manage waste processing facilities and their capacity" : "View processor details and current capacity"}
           </p>
         </div>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-        >
-          + Add Processor
-        </button>
+        {canEditProcessors && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+          >
+            + Add Processor
+          </button>
+        )}
       </div>
 
       {/* Summary Stats */}
@@ -239,22 +259,27 @@ const ProcessorsPage = () => {
       <ProcessorDetailPanel
         processor={selectedProcessor}
         onClose={() => setSelectedProcessor(null)}
+        onCompleteProcessing={handleCompleteProcessing}
       />
 
       {/* Modals */}
-      <ProcessorFormModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onSubmit={handleAdd}
-        processor={null}
-      />
+      {canEditProcessors && (
+        <ProcessorFormModal
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onSubmit={handleAdd}
+          processor={null}
+        />
+      )}
 
-      <ProcessorFormModal
-        open={editOpen}
-        onClose={() => { setEditOpen(false); setTargetProcessor(null); }}
-        onSubmit={handleEdit}
-        processor={targetProcessor}
-      />
+      {canEditProcessors && (
+        <ProcessorFormModal
+          open={editOpen}
+          onClose={() => { setEditOpen(false); setTargetProcessor(null); }}
+          onSubmit={handleEdit}
+          processor={targetProcessor}
+        />
+      )}
 
       <DeleteProcessorModal
         open={deleteOpen}

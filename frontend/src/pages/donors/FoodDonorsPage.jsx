@@ -4,7 +4,7 @@ import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import { getCurrentRole, hasRole } from "../../utils/auth";
 import { getCenters } from "../../utils/centerApi";
-import { createDonor, deleteDonor, getDonors, updateDonor } from "../../utils/donorApi";
+import { deleteDonor, getDonors, updateDonor } from "../../utils/donorApi";
 import DonorFormModal from "./DonorFormModal";
 import DeleteDonorModal from "./DeleteDonorModal";
 import DonorDetailPopup from "./DonorDetailPopup";
@@ -33,7 +33,6 @@ const FoodDonorsPage = () => {
   const [error, setError] = useState("");
   const [selectedDonor, setSelectedDonor] = useState(null);
   const [targetDonor, setTargetDonor] = useState(null);
-  const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -41,7 +40,7 @@ const FoodDonorsPage = () => {
   const role = getCurrentRole();
   const isAdmin = hasRole("ROLE_ADMIN");
   const isDonor = hasRole("ROLE_DONOR");
-  const canViewDonors = isAdmin || hasRole("ROLE_OPERATOR") || isDonor;
+  const canViewDonors = hasRole("ROLE_OPERATOR") || isDonor;
 
   useEffect(() => {
     if (!canViewDonors) {
@@ -67,11 +66,6 @@ const FoodDonorsPage = () => {
   useEffect(() => {
     if (canViewDonors) loadDonors();
   }, [canViewDonors]);
-
-  const handleAdd = async (donor) => {
-    const created = await createDonor(donor);
-    setDonors((previous) => [...previous, normalizeDonor(created, centers)]);
-  };
 
   const handleEdit = async (donor) => {
     const saved = await updateDonor(donor);
@@ -123,7 +117,6 @@ const FoodDonorsPage = () => {
           <h2 className="text-2xl font-bold text-gray-800">Food Donors</h2>
           <p className="text-sm text-gray-500 mt-1">Manage donors and their collection center assignments</p>
         </div>
-        {!isDonor && <button onClick={() => setAddOpen(true)} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">+ Add Donor</button>}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -139,7 +132,6 @@ const FoodDonorsPage = () => {
         <DonorDetailPopup donor={selectedDonor} onClose={() => setSelectedDonor(null)} />
       )}
 
-      <DonorFormModal open={addOpen} onClose={() => setAddOpen(false)} onSubmit={handleAdd} centers={centers} />
       <DonorFormModal open={editOpen} onClose={() => { setEditOpen(false); setTargetDonor(null); }} onSubmit={handleEdit} donor={targetDonor} centers={centers} />
       <DeleteDonorModal open={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} donor={targetDonor} />
     </div>

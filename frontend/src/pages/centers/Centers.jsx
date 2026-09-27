@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import PaginatedTable from "../../components/ui/PaginatedTable";
@@ -8,12 +8,14 @@ import CapacityBar from "../../components/ui/CapacityBar";
 import CenterDetailPanel from "./CenterDetailPanel";
 import CenterFormModal from "./CenterFormModal";
 import DeleteCenterModal from "./DeleteCenterModal";
-import DispatchModal from "./DispatchModal";
+import DispatchModal from "../dispatch/DispatchModal";
+import DispatchWasteFilters from "../dispatch/DispatchWasteFilters";
 import { getCurrentRole, hasRole } from "../../utils/auth";
 import {
   createCenter,
   deleteCenter,
   dispatchCenter,
+  dispatchWasteItem,
   getCenterSupportingData,
   getCenters,
   updateCenter,
@@ -27,15 +29,23 @@ const getCapacityStatus = (current, max) => {
   return { label: "OK", cls: "bg-green-100 text-green-700" };
 };
 
-const normalizeCenter = (center, wasteItems, donors) => {
-  const wasteHeld = wasteItems
-    .filter((item) => item.collectionCenterId === center.id && !item.processed)
+const normalizeCenter = (center, wasteItems, donors, dispatchOnly) => {
+  const dispatchReadyItems = wasteItems
+    .filter((item) => item.collectionCenterId === center.id
+      && item.accepted
+      && !item.rejected
+      && !item.processed
+      && (dispatchOnly ? !item.dispatched : true))
     .map((item) => ({
       id: item.id,
       type: item.wasteType,
+      donorName: item.donorName || "Unknown donor",
       weight: Number(item.weightKg || 0),
       expiry: item.expirationDate,
-    }));
+      status: item.processed ? "PROCESSED" : item.dispatched ? "DISPATCHED" : "ACCEPTED",
+    }))
+    .sort((first, second) => String(first.expiry || "9999-12-31").localeCompare(String(second.expiry || "9999-12-31")));
+
   const donorIds = new Set(
     wasteItems
       .filter((item) => item.collectionCenterId === center.id)
@@ -47,12 +57,12 @@ const normalizeCenter = (center, wasteItems, donors) => {
     maxCapacity: Number(center.maxCapacityKg || 0),
     currentLoad: Number(center.currentLoadKg || 0),
     donors: donors.filter((donor) => donorIds.has(donor.id)),
-    wasteItems: wasteHeld,
+    wasteItems: dispatchReadyItems,
   };
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-const Centers = () => {
+const Centers = ({ dispatchOnly = false }) => {
   const [centers, setCenters] = useState([]);
   const [processors, setProcessors] = useState([]);
   const [donors, setDonors] = useState([]);
@@ -61,10 +71,16 @@ const Centers = () => {
   const [error, setError] = useState("");
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [targetCenter, setTargetCenter] = useState(null);
+  const [targetItem, setTargetItem] = useState(null);
+  const [dispatchStatus, setDispatchStatus] = useState("ALL");
 
   const navigate = useNavigate();
   const canManageCenters = hasRole("ROLE_ADMIN") || hasRole("ROLE_OPERATOR");
   const isAdmin = hasRole("ROLE_ADMIN");
+  const canAddCenters = isAdmin;
+  const canEditCenters = isAdmin;
+  const canDeleteCenters = isAdmin;
+  const canDispatch = dispatchOnly || isAdmin;
 
   useEffect(() => {
     if (!canManageCenters) {
@@ -84,7 +100,7 @@ const Centers = () => {
       setDonors(donorData || []);
       setWasteItems(wasteData || []);
       setCenters((centerData || []).map((center) =>
-        normalizeCenter(center, wasteData || [], donorData || [])
+        normalizeCenter(center, wasteData || [], donorData || [], dispatchOnly)
       ));
     } catch (requestError) {
       setError(requestError.message || "Unable to load collection centers.");
@@ -116,6 +132,10 @@ const Centers = () => {
   ).length;
   const totalLoad = Number(centers.reduce((s, c) => s + c.currentLoad, 0).toFixed(2));
   const totalCapacity = Number(centers.reduce((s, c) => s + c.maxCapacity, 0).toFixed(2));
+  const visibleCenters = useMemo(() => {
+    if (!dispatchOnly || dispatchStatus === "ALL") return centers;
+    return centers.filter((center) => center.wasteItems.some((item) => item.status === dispatchStatus));
+  }, [centers, dispatchOnly, dispatchStatus]);
 
   // ── Handlers ──
   const handleAdd = async (newCenter) => {
@@ -138,20 +158,34 @@ const Centers = () => {
 
   const handleDispatch = async () => {
     if (!targetCenter) return;
-    if (!targetCenter.processorName || !targetCenter.wasteItems?.length) return;
+    if (!targetCenter.processorName || !targetCenter.wasteItems?.some((item) => item.status === "ACCEPTED")) return;
 
-    await dispatchCenter(targetCenter.id);
+    if (targetItem) {
+      await dispatchWasteItem(targetCenter.id, targetItem.id);
+    } else {
+      await dispatchCenter(targetCenter.id);
+    }
     await loadCenters();
     setSelectedCenter(null);
     setDispatchOpen(false);
+    setTargetItem(null);
   };
 
   // Open helpers
   const openEdit = (center) => { setTargetCenter(center); setEditOpen(true); };
   const openDelete = (center) => { setTargetCenter(center); setDeleteOpen(true); };
-  const openDispatch = (center) => { setTargetCenter(center); setDispatchOpen(true); };
+  const openDispatch = (center) => { setTargetCenter(center); setTargetItem(null); setDispatchOpen(true); };
+  const openItemDispatch = (center, item) => { setTargetCenter(center); setTargetItem(item); setDispatchOpen(true); };
 
   if (!canManageCenters) return null;
+
+  const getDispatchStatus = (row) => {
+    const statuses = new Set(row.wasteItems.map((item) => item.status));
+    if (statuses.has("ACCEPTED")) return { label: "Accepted / Ready", cls: "bg-green-100 text-green-700" };
+    if (statuses.has("DISPATCHED")) return { label: "Dispatched / Processing", cls: "bg-blue-100 text-blue-700" };
+    if (statuses.has("PROCESSED")) return { label: "Processed", cls: "bg-purple-100 text-purple-700" };
+    return { label: "No items", cls: "bg-gray-100 text-gray-600" };
+  };
 
   // ── Table columns ──
   const columns = [
@@ -169,12 +203,16 @@ const Centers = () => {
     },
     {
       key: "status",
-      label: "Status",
-      width: "w-28",
+      label: dispatchOnly ? "Waste Status" : "Status",
+      width: dispatchOnly ? "w-44" : "w-28",
       render: (row) => {
+        if (dispatchOnly) {
+          const dispatchStatus = getDispatchStatus(row);
+          return <span className={`inline-flex whitespace-nowrap items-center justify-center text-xs font-semibold px-2 py-1 rounded-full ${dispatchStatus.cls}`}>{dispatchStatus.label}</span>;
+        }
         const s = getCapacityStatus(row.currentLoad, row.maxCapacity);
         return (
-          <span className={`inline-flex items-center justify-center text-xs font-semibold px-2 py-1 rounded-full ${s.cls}`}>
+          <span className={`inline-flex whitespace-nowrap items-center justify-center text-xs font-semibold px-2 py-1 rounded-full ${s.cls}`}>
             {s.label}
           </span>
         );
@@ -194,21 +232,25 @@ const Centers = () => {
             View
           </button>
 
-          <button
-            onClick={() => openEdit(row)}
-            className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
-          >
-            Edit
-          </button>
+          {canEditCenters && (
+            <button
+              onClick={() => openEdit(row)}
+              className="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600"
+            >
+              Edit
+            </button>
+          )}
 
-          <button
-            onClick={() => openDispatch(row)}
-            className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
-          >
-            Dispatch
-          </button>
+          {canDispatch && (
+            <button
+              onClick={() => openDispatch(row)}
+              className="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700"
+            >
+              Dispatch
+            </button>
+          )}
 
-          {isAdmin && (
+          {canDeleteCenters && (
             <button
               onClick={() => openDelete(row)}
               className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
@@ -227,18 +269,20 @@ const Centers = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Collection Centers</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{dispatchOnly ? "Dispatch Waste" : "Collection Centers"}</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Manage waste collection points and their capacity
+            {dispatchOnly ? "Dispatch accepted waste that is still waiting for its processor." : "View collection centers and their capacity"}
           </p>
         </div>
 
-        <button
-          onClick={() => setAddOpen(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-        >
-          + Add Center
-        </button>
+        {canAddCenters && (
+          <button
+            onClick={() => setAddOpen(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+          >
+            + Add Center
+          </button>
+        )}
       </div>
 
       {/* Stats */}
@@ -249,6 +293,8 @@ const Centers = () => {
         <StatCard label="Total Capacity (kg)" value={formatMetric(totalCapacity)} icon="📊" color="green" />
       </div>
 
+      {dispatchOnly && <DispatchWasteFilters value={dispatchStatus} onChange={setDispatchStatus} />}
+
       {error && (
         <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
           <span>{error}</span>
@@ -257,45 +303,55 @@ const Centers = () => {
       )}
 
       {/* Table */}
-      {loading ? <p className="text-gray-500">Loading collection centers...</p> : <PaginatedTable columns={columns} data={centers} pageSize={5} />}
+      {loading ? <p className="text-gray-500">Loading collection centers...</p> : <PaginatedTable columns={columns} data={visibleCenters} pageSize={5} responsiveCards={dispatchOnly} />}
 
       {/* Detail Panel */}
       <CenterDetailPanel
         center={selectedCenter}
         onClose={() => setSelectedCenter(null)}
-        onDispatch={openDispatch}
+        onDispatch={canDispatch ? openDispatch : undefined}
+        onDispatchItem={canDispatch ? openItemDispatch : undefined}
       />
 
       {/* Modals */}
-      <CenterFormModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onSubmit={handleAdd}
-        processors={processors}
-      />
+      {canAddCenters && (
+        <CenterFormModal
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onSubmit={handleAdd}
+          processors={processors}
+        />
+      )}
 
-      <CenterFormModal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        onSubmit={handleEdit}
-        processors={processors}
-        center={targetCenter}
-        donors={donors}
-      />
+      {canEditCenters && (
+        <CenterFormModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSubmit={handleEdit}
+          processors={processors}
+          center={targetCenter}
+          donors={donors}
+        />
+      )}
 
-      <DeleteCenterModal
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleDelete}
-        center={targetCenter}
-      />
+      {canDeleteCenters && (
+        <DeleteCenterModal
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleDelete}
+          center={targetCenter}
+        />
+      )}
 
-      <DispatchModal
-        open={dispatchOpen}
-        onClose={() => setDispatchOpen(false)}
-        onConfirm={handleDispatch}
-        center={targetCenter}
-      />
+      {canDispatch && (
+        <DispatchModal
+          open={dispatchOpen}
+          onClose={() => setDispatchOpen(false)}
+          onConfirm={handleDispatch}
+          center={targetCenter}
+          item={targetItem}
+        />
+      )}
 
     </div>
   );

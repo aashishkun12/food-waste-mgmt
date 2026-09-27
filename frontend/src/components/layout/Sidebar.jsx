@@ -1,15 +1,29 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FiHome, FiUsers, FiTrash2, FiMapPin, FiBarChart2, FiUserCheck, FiLogOut, FiSettings } from "react-icons/fi";
+import { FiHome, FiUsers, FiTrash2, FiMapPin, FiBarChart2, FiUserCheck, FiLogOut, FiSettings, FiClipboard, FiPackage, FiTruck, FiActivity, FiMenu } from "react-icons/fi";
 
 const ICONS = {
-  Dashboard:    FiHome,
-  Donors:       FiUsers,
-  "Waste Items": FiTrash2,
-  Centers:      FiMapPin,
-  Processors:   FiSettings,
-  Reports:      FiBarChart2,
-  Users:        FiUserCheck,
+  Dashboard:                 FiHome,
+  "User Management":        FiUserCheck,
+  "Donor Details":          FiUsers,
+  "Donor Management":      FiUsers,
+  "Donors":                FiUsers,
+  "Food Waste Management": FiTrash2,
+  "Food Waste Operations": FiTrash2,
+  "Accept Waste":          FiPackage,
+  "Dispatch Waste":        FiTruck,
+  "Capacity Monitoring":   FiActivity,
+  "Waste Items":           FiTrash2,
+  "Waste Details":         FiTrash2,
+  "Donate Waste":          FiPackage,
+  "Centers":               FiMapPin,
+  "Collection Center Management": FiMapPin,
+  "Processor Management":   FiSettings,
+  "Processors":            FiSettings,
+  "Reports":               FiBarChart2,
+  "Users":                 FiUserCheck,
+  "Profile":               FiUserCheck,
+  "Donation History":      FiClipboard,
 };
 
 const ROLE_STYLES = {
@@ -20,25 +34,28 @@ const ROLE_STYLES = {
 
 const MENU_ITEMS = {
   ROLE_ADMIN: [
-    { name: "Dashboard",   path: "/dashboard" },
-    { name: "Donors",      path: "/donors" },
-    { name: "Waste Items", path: "/waste" },
-    { name: "Centers",     path: "/centers" },
-    { name: "Processors",  path: "/processors" },
-    { name: "Reports",     path: "/reports" },
-    { name: "Users",       path: "/users" },
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "User Management", path: "/users" },
+    { name: "Donor Details", path: "/donor-details" },
+    { name: "Food Waste Management", path: "/waste" },
+    { name: "Collection Center Management", path: "/centers" },
+    { name: "Processor Management", path: "/processors" },
+    { name: "Reports", path: "/reports" },
   ],
   ROLE_OPERATOR: [
-    { name: "Dashboard",   path: "/dashboard" },
-    { name: "Donors",      path: "/donors" },
-    { name: "Waste Items", path: "/waste" },
-    { name: "Centers",     path: "/centers" },
-    { name: "Processors",  path: "/processors" },
-    { name: "Reports",     path: "/reports" },
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Donor Details", path: "/donor-details" },
+    { name: "Accept Waste", path: "/waste" },
+    { name: "Dispatch Waste", path: "/dispatch_waste" },
+    { name: "Centers", path: "/centers" },
+    { name: "Processors", path: "/processors" },
+    { name: "Reports", path: "/reports" },
   ],
   ROLE_DONOR: [
     { name: "Dashboard", path: "/dashboard" },
-    { name: "Donors",    path: "/donors" },
+    { name: "Profile", path: "/profile" },
+    { name: "Donation History", path: "/donation-history" },
+    { name: "Donate Waste", path: "/waste" },
   ],
 };
 
@@ -46,6 +63,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // ── Read from localStorage ──
   const token       = localStorage.getItem("wfms_token");
@@ -62,7 +80,26 @@ const Sidebar = () => {
 
   return (
     <>
-      <div className="w-64 h-screen sticky top-0 bg-green-900 text-white p-5 flex flex-col justify-between overflow-y-auto">
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Open navigation"
+        className="fixed left-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-lg bg-green-900 text-white shadow-lg md:hidden"
+      >
+        <FiMenu size={20} />
+      </button>
+
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+        />
+      )}
+
+      <div className={`${mobileOpen ? "flex" : "hidden"} fixed inset-y-0 left-0 z-50 w-60 min-w-[15rem] shrink-0 bg-green-900 p-4 text-white shadow-2xl md:sticky md:flex md:h-screen md:shadow-none`}>
+        <div className="flex h-full w-full flex-col justify-between overflow-y-auto">
         <div>
           {/* Brand */}
           <div className="flex items-center gap-2 mb-6">
@@ -89,12 +126,13 @@ const Sidebar = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition ${
                     isActive ? "bg-green-700 text-white font-medium" : "text-green-100 hover:bg-green-800 hover:text-white"
                   }`}
                 >
-                  {Icon && <Icon size={16} />}
-                  {item.name}
+                  {Icon && <Icon size={14} className="shrink-0" />}
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
@@ -108,6 +146,7 @@ const Sidebar = () => {
           <FiLogOut size={16} />
           Logout
         </button>
+      </div>
       </div>
 
       {/* Logout Modal */}

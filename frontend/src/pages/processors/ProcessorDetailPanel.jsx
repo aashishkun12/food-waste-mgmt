@@ -17,7 +17,7 @@ const CloseIcon = () => (
   </svg>
 );
 
-const ProcessorDetailPanel = ({ processor, onClose }) => {
+const ProcessorDetailPanel = ({ processor, onClose, onCompleteProcessing }) => {
   useEffect(() => {
     if (!processor) return undefined;
 
@@ -80,6 +80,30 @@ const ProcessorDetailPanel = ({ processor, onClose }) => {
             )}
             {+pct >= 80 && +pct < 100 && (
               <p className="text-xs mt-2 font-semibold text-yellow-600">⚠️ Approaching max capacity.</p>
+            )}
+          </div>
+
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-700 mb-3">Dispatched Waste Awaiting Processing</h4>
+            {!processor.processingItems?.length ? (
+              <p className="text-sm text-gray-400">No dispatched waste is waiting for processing.</p>
+            ) : (
+              <div className="space-y-2">
+                {processor.processingItems.map((item) => (
+                  <div key={item.id} className="border rounded-lg p-3 bg-gray-50 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{item.wasteType} · {Number(item.weightKg || 0).toFixed(2)} kg</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Expiry: {item.expirationDate || "N/A"}</p>
+                    </div>
+                    <button
+                      onClick={() => onCompleteProcessing(item.id)}
+                      className="px-3 py-1.5 rounded bg-green-600 text-white text-xs font-medium hover:bg-green-700"
+                    >
+                      Mark Processed
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

@@ -1,7 +1,7 @@
 ﻿import { useEffect } from "react";
 
 export const modalOverlayClass =
-  "fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[10px] px-4";
+  "fixed inset-0 z-[60] flex h-screen w-screen items-center justify-center bg-slate-900/30 backdrop-blur-[12px] px-4";
 
 const CloseIcon = () => (
   <svg

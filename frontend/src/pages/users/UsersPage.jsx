@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import PaginatedTable from "../../components/ui/PaginatedTable";
 import StatCard from "../../components/ui/StatCard";
 import ToggleStatusModal from "./ToggleStatusModal";
-import { getCurrentRole, hasRole } from "../../utils/auth";
-import { getUsers, updateUserRoles, updateUserStatus } from "../../utils/userApi";
-
-const ROLE_OPTIONS = ["ADMIN", "OPERATOR", "DONOR"];
+import UserDetailsModal from "./UserDetailsModal";
+import { hasRole } from "../../utils/auth";
+import { getUsers, updateUserDetails, updateUserStatus } from "../../utils/userApi";
 
 const getDisplayRole = (user) => {
   const rawRole = user?.roles?.[0]?.role ?? user?.roles?.[0] ?? user?.role ?? "ROLE_DONOR";
@@ -19,9 +18,9 @@ const UsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("ALL");
   const [statusTarget, setStatusTarget] = useState(null);
-  const [roleTarget, setRoleTarget] = useState(null);
-  const [pendingRole, setPendingRole] = useState("");
+  const [detailsTarget, setDetailsTarget] = useState(null);
 
   const navigate = useNavigate();
   const currentUser = (() => {
@@ -43,7 +42,8 @@ const UsersPage = () => {
     setLoading(true);
     setError("");
     try {
-      setUsers(await getUsers() || []);
+      const userData = await getUsers();
+      setUsers(userData || []);
     } catch (requestError) {
       setError(requestError.message || "Unable to load users.");
     } finally {
@@ -55,24 +55,6 @@ const UsersPage = () => {
     if (isAdmin) loadUsers();
   }, [isAdmin]);
 
-  const handleRoleChangeRequest = (user, role) => {
-    if (user.id === currentUser?.id || getDisplayRole(user) === role) return;
-    setRoleTarget(user);
-    setPendingRole(role);
-  };
-
-  const confirmRoleChange = async () => {
-    if (!roleTarget) return;
-    try {
-      const updated = await updateUserRoles(roleTarget.id, pendingRole);
-      setUsers((previous) => previous.map((item) => item.id === roleTarget.id ? updated : item));
-      setRoleTarget(null);
-      setPendingRole("");
-    } catch (requestError) {
-      setError(requestError.message || "Unable to update user role.");
-    }
-  };
-
   const confirmStatusChange = async () => {
     try {
       const updated = await updateUserStatus(statusTarget.id, !statusTarget.active);
@@ -83,11 +65,19 @@ const UsersPage = () => {
     }
   };
 
+  const saveUserDetails = async (userId, details) => {
+    const updated = await updateUserDetails(userId, details);
+    setUsers((previous) => previous.map((item) => item.id === userId ? updated : item));
+    setDetailsTarget(updated);
+  };
+
   if (!isAdmin) return null;
 
   const filteredUsers = users.filter((user) => {
     const term = search.trim().toLowerCase();
-    return !term || user.username.toLowerCase().includes(term) || user.email.toLowerCase().includes(term);
+    const matchesSearch = !term || user.username.toLowerCase().includes(term) || user.email.toLowerCase().includes(term);
+    const matchesRole = roleFilter === "ALL" || getDisplayRole(user) === roleFilter;
+    return matchesSearch && matchesRole;
   });
   const activeUsers = users.filter((user) => user.active).length;
   const adminCount = users.filter((user) => getDisplayRole(user) === "ADMIN").length;
@@ -99,16 +89,7 @@ const UsersPage = () => {
       key: "roles",
       label: "Role",
       width: "w-36",
-      render: (user) => (
-        <select
-          value={getDisplayRole(user)}
-          disabled={user.id === currentUser?.id}
-          onChange={(event) => handleRoleChangeRequest(user, event.target.value)}
-          className="border rounded px-2 py-1 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-        >
-          {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
-        </select>
-      ),
+      render: (user) => <span className="text-sm font-medium text-gray-700">{getDisplayRole(user)}</span>,
     },
     {
       key: "active",
@@ -119,15 +100,18 @@ const UsersPage = () => {
     {
       key: "actions",
       label: "Actions",
-      width: "w-32",
+      width: "w-44",
       render: (user) => (
-        <button
-          onClick={() => setStatusTarget(user)}
-          disabled={user.id === currentUser?.id}
-          className={`w-28 px-3 py-1 text-sm rounded text-white disabled:opacity-50 disabled:cursor-not-allowed ${user.active ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}`}
-        >
-          {user.active ? "Deactivate" : "Activate"}
-        </button>
+        <div className="flex flex-wrap gap-1">
+          <button onClick={() => setDetailsTarget(user)} className="px-2 py-1 text-xs rounded bg-blue-500 text-white hover:bg-blue-600">View</button>
+          <button
+            onClick={() => setStatusTarget(user)}
+            disabled={user.id === currentUser?.id}
+            className={`px-2 py-1 text-xs rounded text-white disabled:opacity-50 disabled:cursor-not-allowed ${user.active ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}`}
+          >
+            {user.active ? "Deactivate" : "Activate"}
+          </button>
+        </div>
       ),
     },
   ];
@@ -139,7 +123,15 @@ const UsersPage = () => {
           <h2 className="text-2xl font-bold text-gray-800">Users Management</h2>
           <p className="text-sm text-gray-500 mt-1">Manage all system users, roles, and account access</p>
         </div>
-        <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search username or email" className="border border-gray-300 rounded px-3 py-2 text-sm w-64 focus:outline-none focus:border-green-500" />
+        <div className="flex flex-wrap gap-2">
+          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search username or email" className="border border-gray-300 rounded px-3 py-2 text-sm w-64 focus:outline-none focus:border-green-500" />
+          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="Filter users by role" className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+            <option value="ALL">All roles</option>
+            <option value="ADMIN">Admins</option>
+            <option value="OPERATOR">Operators</option>
+            <option value="DONOR">Donors</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -152,22 +144,12 @@ const UsersPage = () => {
       {error && <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}</span><button onClick={loadUsers} className="font-semibold underline">Retry</button></div>}
       {loading ? <p className="text-gray-500">Loading users...</p> : <PaginatedTable columns={columns} data={filteredUsers} pageSize={8} />}
 
-      {roleTarget && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow w-96">
-            <h2 className="text-lg font-semibold">Change User Role</h2>
-            <p className="mt-2 text-gray-600">
-              Are you sure you want to change <span className="font-medium">{roleTarget.username}</span> from <span className="font-medium">{getDisplayRole(roleTarget)}</span> to <span className="font-medium">{pendingRole}</span>?
-            </p>
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => { setRoleTarget(null); setPendingRole(""); }} className="px-3 py-1 border rounded">Cancel</button>
-              <button onClick={confirmRoleChange} className="px-3 py-1 rounded bg-blue-600 text-white">Confirm</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <ToggleStatusModal open={!!statusTarget} user={statusTarget} onClose={() => setStatusTarget(null)} onConfirm={confirmStatusChange} />
+      <UserDetailsModal
+        user={detailsTarget}
+        onClose={() => setDetailsTarget(null)}
+        onSave={saveUserDetails}
+      />
     </div>
   );
 };

@@ -27,3 +27,4 @@ export const updateCenter = (center) => api.put(`${CENTERS_ENDPOINT}/${center.id
 export const deleteCenter = (centerId) => api.delete(`${CENTERS_ENDPOINT}/${centerId}`);
 
 export const dispatchCenter = (centerId) => api.post(`${CENTERS_ENDPOINT}/${centerId}/dispatch`);
+export const dispatchWasteItem = (centerId, itemId) => api.post(`${CENTERS_ENDPOINT}/${centerId}/dispatch/${itemId}`);

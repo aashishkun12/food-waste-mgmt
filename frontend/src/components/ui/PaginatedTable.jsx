@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Table from "./Table";
 
-const PaginatedTable = ({ columns, data, pageSize = 8 }) => {
+const PaginatedTable = ({ columns, data, pageSize = 8, responsiveCards = true }) => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = useMemo(
@@ -28,7 +28,7 @@ const PaginatedTable = ({ columns, data, pageSize = 8 }) => {
   return (
     <div className="space-y-3">
       <div className="min-h-[360px]">
-        <Table columns={columns} data={visibleRows} />
+        <Table columns={columns} data={visibleRows} responsiveCards={responsiveCards} />
       </div>
 
       {totalPages > 1 && (
