@@ -17,7 +17,10 @@ public class FoodWasteItemResponse {
     private Double weightKg;
     private LocalDate expirationDate;
     private WasteType wasteType;
+    private boolean accepted;
     private boolean processed;
+    private boolean rejected;
+    private boolean dispatched;
     private String donorName;
     private Long donorId;
     private String collectionCenterLocation;

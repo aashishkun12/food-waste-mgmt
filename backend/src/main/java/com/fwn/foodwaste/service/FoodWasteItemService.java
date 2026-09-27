@@ -4,14 +4,18 @@ import com.fwn.foodwaste.dto.Request.AutoAssignFoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Request.FoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Response.FoodWasteItemResponse;
 import com.fwn.foodwaste.entity.CollectionCentres;
-import com.fwn.foodwaste.entity.FoodDonor;
 import com.fwn.foodwaste.entity.FoodWasteItems;
+import com.fwn.foodwaste.entity.User;
 import com.fwn.foodwaste.exception.CapacityExceededException;
 import com.fwn.foodwaste.exception.ResourceNotFoundException;
+import com.fwn.foodwaste.exception.ValidationException;
 import com.fwn.foodwaste.repository.CollectionCenterRepository;
-import com.fwn.foodwaste.repository.FoodDonorRepository;
 import com.fwn.foodwaste.repository.FoodWasteItemRepository;
+import com.fwn.foodwaste.repository.UserRepository;
+import com.fwn.foodwaste.repository.ProcessorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,8 +30,9 @@ import java.util.stream.Collectors;
 public class FoodWasteItemService {
     private final GreedyCollectionCenterService greedyService;
     private final FoodWasteItemRepository itemRepo;
-    private final FoodDonorRepository donorRepo;
+        private final UserRepository donorRepo;
     private final CollectionCenterRepository centerRepo;
+        private final ProcessorRepository processorRepo;
 
     @Transactional(readOnly = true)
     public List<FoodWasteItemResponse> findAll() {
@@ -64,7 +69,7 @@ public class FoodWasteItemService {
     }
 
     public FoodWasteItemResponse create(FoodWasteItemRequest req) {
-        FoodDonor donor = donorRepo.findById(req.getDonorId())
+        User donor = donorRepo.findById(req.getDonorId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Donor not found: " + req.getDonorId()));
 
@@ -74,7 +79,7 @@ public class FoodWasteItemService {
                                 + req.getCollectionCenterId()));
 
         // capacity check
-        if (!center.hasCapacity(req.getWeightKg()))
+        if (activeCenterLoad(center) + req.getWeightKg() > center.getMaxCapicityKg())
             throw new CapacityExceededException(
                     "Center '" + center.getLocation() + "' is full. "
                             + "Max: " + center.getMaxCapicityKg() + " kg, "
@@ -86,16 +91,24 @@ public class FoodWasteItemService {
         item.setWasteType(req.getWasteType());
         item.setDonor(donor);
         item.setCollectionCentre(center);
+        item.setAccepted(false);
         item.setProcessed(false);
-
-        center.setCurrentLoadKg(center.getCurrentLoadKg() + req.getWeightKg());
-        centerRepo.save(center);
 
         return toResponse(itemRepo.save(item));
     }
 
     public FoodWasteItemResponse update(Long id, FoodWasteItemRequest req) {
         FoodWasteItems item = getItem(id);
+
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                boolean isDonor = authentication != null && authentication.getAuthorities().stream()
+                                .anyMatch(authority -> "ROLE_DONOR".equals(authority.getAuthority()));
+                if (isDonor && (item.isAccepted() || item.isProcessed() || item.isRejected() || item.isDispatched())) {
+                        throw new ValidationException("Accepted or rejected waste items cannot be edited by a donor.");
+                }
+                if (isDonor && (req.getProcessed() != null || req.getRejected() != null)) {
+                        throw new ValidationException("Donors cannot change the acceptance status of a waste item.");
+                }
 
         // if center changed, adjust loads on both old and new center
         if (!item.getCollectionCentre().getId()
@@ -126,8 +139,64 @@ public class FoodWasteItemService {
         item.setExpirationDate(req.getExpirationDate());
         item.setWasteType(req.getWasteType());
 
-        return toResponse(itemRepo.save(item));
+        if (req.getProcessed() != null) {
+            item.setProcessed(req.getProcessed());
+        }
+
+        if (req.getRejected() != null) {
+            item.setRejected(req.getRejected());
+            if (req.getRejected()) {
+                item.setProcessed(false);
+            }
+        }
+
+        FoodWasteItemResponse response = toResponse(itemRepo.save(item));
+        refreshCenterLoad(item.getCollectionCentre());
+        return response;
     }
+
+    public FoodWasteItemResponse accept(Long id) {
+        FoodWasteItems item = getItem(id);
+                if (item.isAccepted() || item.isRejected() || item.isDispatched() || item.isProcessed()) {
+                        throw new ValidationException("Only pending waste can be accepted.");
+                }
+                if (activeCenterLoad(item.getCollectionCentre()) + item.getWeightKg() > item.getCollectionCentre().getMaxCapicityKg()) {
+                        throw new CapacityExceededException("Collection center is full. Dispatch accepted waste before accepting more.");
+                }
+                item.setAccepted(true);
+                item.setProcessed(false);
+        item.setRejected(false);
+        FoodWasteItemResponse response = toResponse(itemRepo.save(item));
+        refreshCenterLoad(item.getCollectionCentre());
+        return response;
+    }
+
+    public FoodWasteItemResponse reject(Long id) {
+        FoodWasteItems item = getItem(id);
+                if (item.isAccepted() || item.isRejected() || item.isDispatched() || item.isProcessed()) {
+                        throw new ValidationException("Only pending waste can be rejected.");
+                }
+                item.setAccepted(false);
+        item.setProcessed(false);
+        item.setRejected(true);
+        FoodWasteItemResponse response = toResponse(itemRepo.save(item));
+        refreshCenterLoad(item.getCollectionCentre());
+        return response;
+    }
+
+        public FoodWasteItemResponse completeProcessing(Long id) {
+                FoodWasteItems item = getItem(id);
+                if (!item.isAccepted() || !item.isDispatched() || item.isRejected()) {
+                        throw new ValidationException("Only accepted and dispatched waste can be marked as processed.");
+                }
+                item.setProcessed(true);
+                if (item.getCollectionCentre() != null && item.getCollectionCentre().getProcessor() != null) {
+                        var processor = item.getCollectionCentre().getProcessor();
+                        processor.setCurrentLoadKg(Math.max(0.0, processor.getCurrentLoadKg() - item.getWeightKg()));
+                        processorRepo.save(processor);
+                }
+                return toResponse(itemRepo.save(item));
+        }
 
     public void delete(Long id) {
         FoodWasteItems item = getItem(id);
@@ -147,6 +216,19 @@ public class FoodWasteItemService {
                         "Food waste item not found: " + id));
     }
 
+        private double activeCenterLoad(CollectionCentres center) {
+                return itemRepo.findByCollectionCentre_Id(center.getId()).stream()
+                                .filter(item -> item.isAccepted() && !item.isRejected() && !item.isDispatched())
+                                .mapToDouble(FoodWasteItems::getWeightKg)
+                                .sum();
+        }
+
+        private void refreshCenterLoad(CollectionCentres center) {
+                if (center == null) return;
+                center.setCurrentLoadKg(activeCenterLoad(center));
+                centerRepo.save(center);
+        }
+
     // auto assign method that uses greedy approach to select best collection centers
     public FoodWasteItemResponse createWithAutoAssign(
             AutoAssignFoodWasteItemRequest req) {
@@ -155,7 +237,7 @@ public class FoodWasteItemService {
         CollectionCentres bestCenter =
                 greedyService.findBestCenter(req.getWeightKg());
 
-        FoodDonor donor = donorRepo.findById(req.getDonorId())
+        User donor = donorRepo.findById(req.getDonorId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Donor not found: " + req.getDonorId()));
 
@@ -184,7 +266,10 @@ public class FoodWasteItemService {
                 .weightKg(i.getWeightKg())
                 .expirationDate(i.getExpirationDate())
                 .wasteType(i.getWasteType())
+                .accepted(i.isAccepted())
                 .processed(i.isProcessed())
+                .rejected(i.isRejected())
+                .dispatched(i.isDispatched())
                 .donorName(i.getDonor().getName())
                 .donorId(i.getDonor().getId())
                 .collectionCenterLocation(

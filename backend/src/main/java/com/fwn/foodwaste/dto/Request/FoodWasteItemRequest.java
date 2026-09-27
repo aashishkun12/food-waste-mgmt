@@ -27,6 +27,9 @@ public class FoodWasteItemRequest {
     @NotNull(message = "Donor ID is required")
     private Long donorId;
 
-   @NotNull(message = "Collection center ID is required")
+    @NotNull(message = "Collection center ID is required")
     private Long collectionCenterId;
+
+    private Boolean processed;
+    private Boolean rejected;
 }

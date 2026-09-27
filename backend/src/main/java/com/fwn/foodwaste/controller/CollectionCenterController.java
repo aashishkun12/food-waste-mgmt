@@ -34,7 +34,7 @@ public class CollectionCenterController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CollectionCenterResponse> create(
             @Valid @RequestBody CollectionCenterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -61,6 +61,14 @@ public class CollectionCenterController {
     public ResponseEntity<Map<String, String>> dispatch(@PathVariable Long id) {
         String result = service.dispatchToProcessor(id);
         return ResponseEntity.ok(Map.of("message", result));
+    }
+
+    @PostMapping("/{centerId}/dispatch/{itemId}")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<Map<String, String>> dispatchItem(
+            @PathVariable Long centerId,
+            @PathVariable Long itemId) {
+        return ResponseEntity.ok(Map.of("message", service.dispatchSingleItem(centerId, itemId)));
     }
 
     // use to show which collection center is in best form

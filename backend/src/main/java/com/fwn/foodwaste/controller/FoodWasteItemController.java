@@ -27,20 +27,20 @@ public class FoodWasteItemController {
     private final FoodWasteItemService itemService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','DONOR')")
     public ResponseEntity<List<FoodWasteItemResponse>> getAll() {
         return ResponseEntity.ok(itemService.findAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','DONOR')")
     public ResponseEntity<FoodWasteItemResponse> getById(
             @PathVariable Long id) {
         return ResponseEntity.ok(itemService.findById(id));
     }
 
     @GetMapping("/by-donor/{donorId}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','DONOR')")
     public ResponseEntity<List<FoodWasteItemResponse>> getByDonor(
             @PathVariable Long donorId) {
         return ResponseEntity.ok(itemService.findByDonor(donorId));
@@ -60,7 +60,7 @@ public class FoodWasteItemController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasRole('DONOR')")
     public ResponseEntity<FoodWasteItemResponse> create(
             @Valid @RequestBody FoodWasteItemRequest request) {
         return ResponseEntity
@@ -69,11 +69,34 @@ public class FoodWasteItemController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','DONOR')")
     public ResponseEntity<FoodWasteItemResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody FoodWasteItemRequest request) {
         return ResponseEntity.ok(itemService.update(id, request));
+    }
+
+    @PatchMapping("/{id}/accept")
+    @PostMapping("/{id}/accept")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<FoodWasteItemResponse> acceptWaste(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(itemService.accept(id));
+    }
+
+    @PatchMapping("/{id}/reject")
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<FoodWasteItemResponse> rejectWaste(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(itemService.reject(id));
+    }
+
+    @PatchMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    public ResponseEntity<FoodWasteItemResponse> completeProcessing(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(itemService.completeProcessing(id));
     }
 
     @DeleteMapping("/{id}")

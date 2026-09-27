@@ -40,7 +40,7 @@ public class CollectionCentres extends BaseEntity{
     private Processors processor;
 
     @ManyToMany(mappedBy = "collectionCentres")
-    private List<FoodDonor> foodDonors = new ArrayList<>();
+    private List<User> donors = new ArrayList<>();
 
     @OneToMany(mappedBy = "collectionCentre", cascade = CascadeType.ALL)
     private List<FoodWasteItems> foodWasteItems = new ArrayList<>();

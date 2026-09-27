@@ -34,7 +34,7 @@ public class FoodDonorController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasRole('DONOR')")
     public ResponseEntity<FoodDonorResponse> create(
             @Valid @RequestBody FoodDonorRequest request) {
         return ResponseEntity
@@ -43,7 +43,7 @@ public class FoodDonorController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR','DONOR')")
     public ResponseEntity<FoodDonorResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody FoodDonorRequest request) {

@@ -24,8 +24,8 @@ public class FoodDonorRequest {
     @Email(message = "Must be a valid email")
     private String contactEmail;
 
-    @Pattern(regexp = "^\\+?[0-9]{7,15}$",
-            message = "Invalid phone number")
+    @Pattern(regexp = "^\\d{10}$",
+            message = "Phone number must be exactly 10 digits")
     private String contactPhone;
 
     // IDs of collection centers this donor delivers to

@@ -58,9 +58,26 @@ public class CollectionCenterService {
     }
 
     public void delete(Long id) {
-        if (!centerRepo.existsById(id))
-            throw new ResourceNotFoundException(
-                    "Collection center not found: " + id);
+        CollectionCentres center = centerRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Collection center not found: " + id));
+
+        if (center.getProcessor() != null) {
+            throw new ValidationException(
+                    "This collection center cannot be deleted because it is assigned to a processor. "
+                            + "Reassign or remove the processor first.");
+        }
+        if (!center.getDonors().isEmpty()) {
+            throw new ValidationException(
+                    "This collection center cannot be deleted because donors are assigned to it. "
+                            + "Remove the donor assignments first.");
+        }
+        if (!center.getFoodWasteItems().isEmpty()) {
+            throw new ValidationException(
+                    "This collection center cannot be deleted because it has donated food items. "
+                            + "Remove or reassign those items first.");
+        }
+
         centerRepo.deleteById(id);
     }
 
@@ -107,21 +124,19 @@ public class CollectionCenterService {
 
         CollectionCentres center = getCenter(centerId);
 
-        List<FoodWasteItems> pending =
-                itemRepo.findByCollectionCentre_IdAndProcessedFalse(centerId);
+        List<FoodWasteItems> approvedItems = itemRepo
+                .findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalse(centerId);
 
-        if (pending.isEmpty())
-            return "No pending items at '" + center.getLocation() + "'";
+        if (approvedItems.isEmpty())
+            return "No accepted items ready to dispatch at '" + center.getLocation() + "'";
 
-        double totalKg = pending.stream()
+        double totalKg = approvedItems.stream()
                 .mapToDouble(FoodWasteItems::getWeightKg).sum();
 
-        // CHANGED — load balancer picks the best processor automatically
-        // instead of using center.getProcessor() which is hardcoded
         Processors processor = loadBalancer.findBestProcessor(totalKg);
 
-        pending.forEach(i -> i.setProcessed(true));
-        itemRepo.saveAll(pending);
+        approvedItems.forEach(item -> item.setDispatched(true));
+        itemRepo.saveAll(approvedItems);
 
         processor.setCurrentLoadKg(
                 processor.getCurrentLoadKg() + totalKg);
@@ -130,10 +145,31 @@ public class CollectionCenterService {
         center.setCurrentLoadKg(0.0);
         centerRepo.save(center);
 
-        return "Dispatched " + pending.size()
-                + " items (" + totalKg + " kg)"
+        return "Dispatched " + approvedItems.size()
+                + " accepted items (" + totalKg + " kg)"
                 + " to '" + processor.getName() + "'";
     }
+
+        public String dispatchSingleItem(Long centerId, Long itemId) {
+                CollectionCentres center = getCenter(centerId);
+                FoodWasteItems item = itemRepo.findById(itemId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Food waste item not found: " + itemId));
+
+                if (item.getCollectionCentre() == null
+                                || !item.getCollectionCentre().getId().equals(centerId)
+                                || !item.isAccepted() || item.isRejected() || item.isDispatched()) {
+                        throw new ValidationException("Only accepted, undispatched items from this center can be dispatched.");
+                }
+
+                Processors processor = loadBalancer.findBestProcessor(item.getWeightKg());
+                item.setDispatched(true);
+                itemRepo.save(item);
+                processor.setCurrentLoadKg(processor.getCurrentLoadKg() + item.getWeightKg());
+                processorRepo.save(processor);
+
+                return "Dispatched item " + item.getId() + " (" + item.getWeightKg() + " kg)"
+                                + " to '" + processor.getName() + "'";
+        }
 
     private void mapFields(CollectionCentres c,
                            CollectionCenterRequest req) {
@@ -156,8 +192,12 @@ public class CollectionCenterService {
     }
 
     public CollectionCenterResponse toResponse(CollectionCentres c) {
+        double activeLoad = itemRepo.findByCollectionCentre_Id(c.getId()).stream()
+                .filter(item -> item.isAccepted() && !item.isRejected() && !item.isDispatched())
+                .mapToDouble(FoodWasteItems::getWeightKg)
+                .sum();
         double pct = c.getMaxCapicityKg() > 0
-                ? (c.getCurrentLoadKg() / c.getMaxCapicityKg()) * 100
+                ? (activeLoad / c.getMaxCapicityKg()) * 100
                 : 0;
         int pending = itemRepo
                 .findByCollectionCentre_IdAndProcessedFalse(c.getId())
@@ -168,7 +208,7 @@ public class CollectionCenterService {
                 .name(c.getName())
                 .location(c.getLocation())
                 .maxCapacityKg(c.getMaxCapicityKg())
-                .currentLoadKg(c.getCurrentLoadKg())
+                .currentLoadKg(activeLoad)
                 .capacityUsedPercent(Math.round(pct * 10.0) / 10.0)
                 .processorName(c.getProcessor() != null
                         ? c.getProcessor().getName() : null)

@@ -33,7 +33,7 @@ public class FefoProcessingService {
     public List<FoodWasteItemResponse> getFefoQueue() {
 
         List<FoodWasteItems> unprocessed =
-                itemRepo.findByProcessedFalse();
+            itemRepo.findByAcceptedTrueAndRejectedFalseAndDispatchedFalseOrderByExpirationDateAsc();
 
         if (unprocessed.isEmpty())
             return Collections.emptyList();
@@ -58,7 +58,7 @@ public class FefoProcessingService {
     public List<FoodWasteItemResponse> getFefoQueueForCenter(Long centerId) {
 
         List<FoodWasteItems> pending =
-                itemRepo.findByCollectionCentre_IdAndProcessedFalse(centerId);
+            itemRepo.findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalseOrderByExpirationDateAsc(centerId);
 
         if (pending.isEmpty())
             return Collections.emptyList();

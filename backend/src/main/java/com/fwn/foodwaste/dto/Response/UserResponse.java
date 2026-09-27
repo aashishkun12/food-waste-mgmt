@@ -4,6 +4,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.List;
 
 @Getter
 @Setter
@@ -16,5 +17,10 @@ public class UserResponse {
     private String email;
     private Set<String> roles;
     private boolean active;
+    private String name;
+    private String address;
+    private String phone;
+    private int totalDonations;
+    private List<String> collectionCenterLocations;
     private LocalDateTime createdAt;
 }

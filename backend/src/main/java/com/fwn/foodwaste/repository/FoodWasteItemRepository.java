@@ -12,6 +12,12 @@ public interface FoodWasteItemRepository extends JpaRepository<FoodWasteItems, L
 
     List<FoodWasteItems> findByCollectionCentre_Id(Long centerId);
 
+    List<FoodWasteItems> findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalse(Long centerId);
+
+    List<FoodWasteItems> findByAcceptedTrueAndRejectedFalseAndDispatchedFalseOrderByExpirationDateAsc();
+
+    List<FoodWasteItems> findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalseOrderByExpirationDateAsc(Long centerId);
+
     List<FoodWasteItems> findByCollectionCentre_IdAndProcessedFalse(Long centerId);
 
     List<FoodWasteItems> findByProcessedFalseOrderByExpirationDateAsc();

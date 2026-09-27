@@ -36,11 +36,14 @@ public class FoodWasteItems extends BaseEntity{
     @Enumerated(EnumType.STRING)
     private WasteType wasteType;
 
+    private boolean accepted = false;
     private boolean processed = false;
+    private boolean rejected = false;
+    private boolean dispatched = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "donor_id", nullable = false)
-    private FoodDonor donor;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User donor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "collection_center_id")

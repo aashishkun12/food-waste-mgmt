@@ -7,6 +7,8 @@ import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -37,5 +39,18 @@ public class User extends BaseEntity{
     private Set<Role> roles = new HashSet<>();
 
     private boolean active = true;
+
+    private String name;
+    private String address;
+    private String phone;
+
+    @ManyToMany
+    @JoinTable(name = "donor_collection_center",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "center_id"))
+    private List<CollectionCentres> collectionCentres = new ArrayList<>();
+
+    @OneToMany(mappedBy = "donor")
+    private List<FoodWasteItems> foodWasteItems = new ArrayList<>();
 
 }

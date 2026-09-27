@@ -3,10 +3,13 @@ package com.fwn.foodwaste.service;
 import com.fwn.foodwaste.dto.Request.LoginRequest;
 import com.fwn.foodwaste.dto.Request.RegisterRequest;
 import com.fwn.foodwaste.dto.Response.AuthResponse;
+import com.fwn.foodwaste.entity.CollectionCentres;
 import com.fwn.foodwaste.entity.Role;
 import com.fwn.foodwaste.entity.User;
 import com.fwn.foodwaste.entity.enums.RoleName;
+import com.fwn.foodwaste.exception.ResourceNotFoundException;
 import com.fwn.foodwaste.exception.ValidationException;
+import com.fwn.foodwaste.repository.CollectionCenterRepository;
 import com.fwn.foodwaste.repository.RoleRepository;
 import com.fwn.foodwaste.repository.UserRepository;
 import com.fwn.foodwaste.security.JwtTokenProvider;
@@ -29,8 +32,8 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     private final UserRepository userRepository;
-
     private final RoleRepository roleRepository;
+    private final CollectionCenterRepository collectionCenterRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -76,23 +79,60 @@ public class AuthService {
                     .collect(Collectors.toSet());
         }
 
+        boolean isOperator = roles.stream()
+                .anyMatch(role -> role.getRole() == RoleName.ROLE_OPERATOR);
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .active(true)
+                .active(!isOperator)
                 .roles(roles)
                 .build();
 
         userRepository.save(user);
+        createDonorProfileIfNeeded(user, request);
 
-        // Auto-login after registration so caller gets a token immediately
+                if (!user.isActive()) {
+                        return buildAuthResponse(user, null);
+                }
+
+                // Auto-login active accounts after registration.
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
                         request.getPassword()));
 
         return buildAuthResponse(user, jwtTokenProvider.generateToken(authentication));
+    }
+
+    private void createDonorProfileIfNeeded(User user, RegisterRequest request) {
+        boolean isDonor = user.getRoles().stream()
+                .anyMatch(role -> role.getRole() == RoleName.ROLE_DONOR);
+
+        if (!isDonor) {
+            return;
+        }
+
+        user.setName(request.getDonorName() != null && !request.getDonorName().isBlank()
+                ? request.getDonorName()
+                : user.getUsername());
+        user.setAddress(request.getAddress() != null && !request.getAddress().isBlank()
+                ? request.getAddress()
+                : "Pending address");
+        user.setPhone(request.getPhone() != null && !request.getPhone().isBlank()
+                ? request.getPhone()
+                : "+9800000000");
+
+        if (request.getCollectionCenterIds() != null && !request.getCollectionCenterIds().isEmpty()) {
+            user.setCollectionCentres(request.getCollectionCenterIds().stream()
+                    .map(centerId -> collectionCenterRepository.findById(centerId)
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Collection center not found: " + centerId)))
+                    .toList());
+        }
+
+        userRepository.save(user);
     }
 
     // Helpers
