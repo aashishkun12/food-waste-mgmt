@@ -20,9 +20,9 @@ jobs:
       db:
         image: postgres:18.4
         env:
-          POSTGRES_DB: ${{env.POSTGRES_DB}}
-          POSTGRES_USER: ${{env.POSTGRES_USER}}
-          POSTGRES_PASSWORD: ${{env.POSTGRES_PASSWORD}}
+          POSTGRES_DB: food_waste_db
+          POSTGRES_USER: test-user
+          POSTGRES_PASSWORD: test-password
         ports:
           - 5432:5432
         options: >-
@@ -55,15 +55,23 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: maven
       
       - name: build-backend
         working-directory: backend
-        run: |
-          mvn clean verify
+        run: mvn -B -e clean verify -DtrimStackTrace=false
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/${{env.POSTGRES_DB}}
           SPRING_DATASOURCE_USERNAME: ${{env.POSTGRES_USER}}
           SPRING_DATASOURCE_PASSWORD: ${{env.POSTGRES_PASSWORD}}
+          SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      
+      - name: upload surefire reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports
 
       # Configure AWS Credentials
       - name: Configure AWS Credentials
