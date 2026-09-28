@@ -59,7 +59,15 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
           "ecr:PutImage",
           "ecr:InitiateLayerUpload",
           "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload"
+          "ecr:CompleteLayerUpload",
+          "eks:DescribeCluster",
+          "eks:CreateCluster",
+          "eks:UpdateClusterConfig",
+          "eks:UpdateClusterVersion",
+          "eks:DeleteCluster",
+          "eks:TagResource",
+          "eks:UntagResource",
+          "eks:ListClusters"
         ]
         Resource = "arn:aws:ecr:ap-south-1:${data.aws_caller_identity.current.account_id}:repository/foodwaste"
       }
