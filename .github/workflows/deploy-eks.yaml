@@ -1,0 +1,91 @@
+name: deploy-on-eks
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read 
+env:
+  POSTGRES_DB: food_waste_db
+  POSTGRES_USER: test-user
+  POSTGRES_PASSWORD: test-password
+  ROLE_NAME: github-actions
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: ${{env.POSTGRES_DB}}
+          POSTGRES_USER: ${{env.POSTGRES_USER}}
+          POSTGRES_PASSWORD: ${{env.POSTGRES_PASSWORD}}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
+    steps:
+
+      # 1. Get source code
+      - uses: actions/checkout@v6
+
+      # 2. Install Dependencies and Build
+      # Frontend
+      - name: setup-nodejs
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: build-frontend
+        working-directory: frontend
+        run: |
+            npm ci
+            npm run build
+
+      # Backend
+      - name: setup-java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      
+      - name: build-backend
+        working-directory: backend
+        run: |
+          mvn clean verify
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/${{env.POSTGRES_DB}}
+          SPRING_DATASOURCE_USERNAME: ${{env.POSTGRES_USER}}
+          SPRING_DATASOURCE_PASSWORD: ${{env.POSTGRES_PASSWORD}}
+
+      # Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: "arn:aws:iam::501591550703:role/${{env.ROLE_NAME}}"
+          aws-region: ap-south-1
+
+      # Login to ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: false
+
+      # Push to ECR
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: foodwaste
+          IMAGE_TAG_1: backend-${{ github.sha }}
+          IMAGE_TAG_2: frontend-${{ github.sha }}
+        run: |
+          docker compose build
+          docker compose push
