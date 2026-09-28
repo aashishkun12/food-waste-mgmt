@@ -99,3 +99,12 @@ jobs:
         run: |
           docker compose build
           docker compose push
+
+      # Connect to EKS
+      - name: update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+          --region ap-south-1 \
+          --name foodwaste_eks_cluster
+        
+      - run: kubectl get nodes
