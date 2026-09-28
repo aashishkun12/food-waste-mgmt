@@ -24,7 +24,7 @@ resource "aws_iam_role" "github_actions" {
                 },
                 "StringLike": {
                     "token.actions.githubusercontent.com:sub": [
-                        "repo:food-waste-mgmt/*"
+                        "repo:aashishkun12/food-waste-mgmt:*"
                     ]
                 }
             }
@@ -61,7 +61,7 @@ resource "aws_iam_role_policy" "github_actions_ecr_push" {
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload"
         ]
-        Resource = "arn:aws:ecr:ap-south-1:${data.aws_caller_identity.current.account_id}:repository/*"
+        Resource = "arn:aws:ecr:ap-south-1:${data.aws_caller_identity.current.account_id}:repository/foodwaste"
       }
     ]
   })
