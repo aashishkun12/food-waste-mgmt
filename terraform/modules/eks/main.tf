@@ -15,7 +15,7 @@ resource "aws_eks_cluster" "foodwaste_eks_cluster" {
     endpoint_private_access = true
 
     public_access_cidrs = [
-      "${var.my_public_ip}/32"
+      "0.0.0.0/0"
     ]
   }
 }
@@ -55,6 +55,23 @@ resource "aws_eks_access_policy_association" "cluster_admin" {
   cluster_name  = aws_eks_cluster.foodwaste_eks_cluster.name
   principal_arn = aws_eks_access_entry.cluster_admin.principal_arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+resource "aws_eks_access_entry" "github_actions" {
+  cluster_name  = aws_eks_cluster.foodwaste_eks_cluster.name
+  principal_arn = var.github_actions_role_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "github_actions" {
+  cluster_name  = aws_eks_cluster.foodwaste_eks_cluster.name
+  principal_arn = var.github_actions_role_arn
+
+  policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
   access_scope {
     type = "cluster"

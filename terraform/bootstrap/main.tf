@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "foodwaste_dev_tfstate" {
-  bucket = var.bucket-name
+  bucket = "foodwaste-dev-tfstate-12"
   force_destroy = true
   tags = {
     Name = "foodwaste-dev-tfstate-12"
@@ -11,7 +11,7 @@ resource "aws_s3_bucket" "foodwaste_dev_tfstate" {
 }
 
 resource "aws_s3_bucket_versioning" "bucket-version" {
-  bucket = var.bucket-name
+  bucket = aws_s3_bucket.foodwaste_dev_tfstate.id
   versioning_configuration {
     status = "Enabled"
   }

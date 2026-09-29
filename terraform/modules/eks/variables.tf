@@ -21,3 +21,8 @@ variable "node-sg" {
 variable "my_public_ip" {
   type = string
 }
+
+variable "github_actions_role_arn" {
+  description = "IAM role ARN used by GitHub Actions"
+  type        = string
+}

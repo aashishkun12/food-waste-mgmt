@@ -62,6 +62,8 @@ module "aws_eks" {
   eks-node-2-subnet    = module.aws_network.eks-private-node-2-subnet-id
   node-sg              = [module.aws_network.node-sec-group-id]
 
+  github_actions_role_arn = module.aws_iam.github_actions_role_arn
+  
   my_public_ip = local.my_public_ip
 
   //node group
