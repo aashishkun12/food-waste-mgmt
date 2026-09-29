@@ -114,13 +114,13 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          kubectl set image deployment/frontend \
+          kubectl set image deployment/frontend-deployment \
           frontend=$REGISTRY/foodwaste:frontend-${GITHUB_SHA}
 
-          kubectl set image deployment/backend \
+          kubectl set image deployment/backend-deploy \
           backend=$REGISTRY/foodwaste:backend-${GITHUB_SHA}
 
       - name: Verify rollout
         run: |
-          kubectl rollout status deployment/frontend
-          kubectl rollout status deployment/backend
+          kubectl rollout status deployment/frontend-deployment
+          kubectl rollout status deployment/backend-deploy
