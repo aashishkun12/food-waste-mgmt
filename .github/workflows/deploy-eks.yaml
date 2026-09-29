@@ -94,8 +94,8 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: foodwaste
-          IMAGE_TAG_1: backend-${{ github.sha }}
-          IMAGE_TAG_2: frontend-${{ github.sha }}
+          IMAGE_TAG_2: backend-${{ github.sha }}
+          IMAGE_TAG_1: frontend-${{ github.sha }}
         run: |
           docker compose build
           docker compose push
@@ -108,3 +108,19 @@ jobs:
           --name foodwaste_eks_cluster
         
       - run: kubectl get nodes
+
+      # Deploy iamge
+      - name: Deploy new images
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          kubectl set image deployment/frontend \
+          frontend=$REGISTRY/foodwaste:frontend-${GITHUB_SHA}
+
+          kubectl set image deployment/backend \
+          backend=$REGISTRY/foodwaste:backend-${GITHUB_SHA}
+
+      - name: Verify rollout
+        run: |
+          kubectl rollout status deployment/frontend
+          kubectl rollout status deployment/backend
