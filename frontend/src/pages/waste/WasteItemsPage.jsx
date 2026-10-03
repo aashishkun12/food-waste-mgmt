@@ -8,7 +8,8 @@ import WasteFilters from "./WasteFilters";
 import { getCurrentRole, hasRole } from "../../utils/auth";
 import { getCenters } from "../../utils/centerApi";
 import { createDonor, getDonors } from "../../utils/donorApi";
-import { acceptWasteItem, createWasteItem, deleteWasteItem, getWasteItems, rejectWasteItem, updateWasteItem } from "../../utils/wasteApi";
+import { acceptWasteItem, autoAssignWasteItem, createWasteItem, deleteWasteItem, getWasteItems, rejectWasteItem, updateWasteItem } from "../../utils/wasteApi";
+import { FiAlertTriangle, FiCheckCircle, FiClock } from "react-icons/fi";
 
 const WASTE_TYPE_COLORS = {
   VEGETABLES: "bg-green-100 text-green-700", DAIRY: "bg-blue-100 text-blue-700", GRAINS: "bg-yellow-100 text-yellow-700",
@@ -32,13 +33,29 @@ const STATUS_LABELS = {
 };
 
 // "YYYY-MM-DD", matching <input type="date"> and the expirationDate format.
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => {
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${today.getFullYear()}-${month}-${day}`;
+};
 
 const DEFAULT_FILTERS = { date: "", type: "", status: "" };
 
 const isExpired = (expiry) => {
   if (!expiry) return false;
-  return new Date(expiry) < new Date();
+  return expiry < todayStr();
+};
+
+const getExpiryUrgency = (expiry, isPending) => {
+  if (!expiry || !isPending) return null;
+  const [year, month, day] = expiry.split("-").map(Number);
+  const [todayYear, todayMonth, todayDay] = todayStr().split("-").map(Number);
+  const daysLeft = (Date.UTC(year, month - 1, day) - Date.UTC(todayYear, todayMonth - 1, todayDay)) / 86400000;
+
+  if (daysLeft <= 3) return { label: "Critical", Icon: FiAlertTriangle, style: "bg-red-100 text-red-700", title: "Expires within 3 days" };
+  if (daysLeft <= 7) return { label: "Warning", Icon: FiClock, style: "bg-amber-100 text-amber-800", title: "Expires within 4-7 days" };
+  return { label: "On track", Icon: FiCheckCircle, style: "bg-green-100 text-green-700", title: "Expires in 8 or more days" };
 };
 
 // Status is derived purely from data we already have on the client — an
@@ -78,6 +95,7 @@ const normalizeItem = (item) => {
 
 const WasteItemsPage = () => {
   const [items, setItems] = useState([]);
+  const [showFefoQueue, setShowFefoQueue] = useState(false);
   const [donors, setDonors] = useState([]);
   const [centers, setCenters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +117,7 @@ const WasteItemsPage = () => {
   const canAddWaste = isDonor;
   const canEditWaste = isDonor || isAdmin;
   const canDeleteWaste = isAdmin;
-  const canAcceptWaste = isOperator;
+  const canAcceptWaste = isOperator || isAdmin;
 
   const currentUser = (() => {
     try {
@@ -194,7 +212,7 @@ const WasteItemsPage = () => {
       throw new Error("Your donor profile could not be resolved. Please sign in again.");
     }
 
-    const created = await createWasteItem(payload);
+    const created = payload.autoAssign ? await autoAssignWasteItem(payload) : await createWasteItem(payload);
     setItems((previous) => [...previous, normalizeItem(created)]);
   };
 
@@ -244,7 +262,10 @@ const WasteItemsPage = () => {
     setTargetItem(null);
   };
 
-  const filtered = useMemo(() => items
+  const sourceItems = showFefoQueue
+    ? items.filter((item) => item.status === "PENDING")
+    : items;
+  const filtered = useMemo(() => sourceItems
     .filter((item) => {
       // All dates removes the restriction; otherwise show items expiring on the selected date.
       const matchesDate = !filters.date || filters.date === "CUSTOM" || item.expiry === filters.date;
@@ -256,7 +277,7 @@ const WasteItemsPage = () => {
       const firstExpiry = firstItem.expiry ? Date.parse(firstItem.expiry) : Number.POSITIVE_INFINITY;
       const secondExpiry = secondItem.expiry ? Date.parse(secondItem.expiry) : Number.POSITIVE_INFINITY;
       return firstExpiry - secondExpiry;
-    }), [items, filters]);
+    }), [sourceItems, filters]);
 
   if (!canManage) {
     return <div className="p-6 text-sm text-red-600">You do not have access to waste items. Current role: {getCurrentRole() || "unknown"}.</div>;
@@ -269,7 +290,7 @@ const WasteItemsPage = () => {
   const columns = [
     { key: "type", label: "Type", width: "w-[10%]", render: (row) => <span className={`text-xs font-semibold px-2 py-1 rounded-full ${WASTE_TYPE_COLORS[row.type] || "bg-gray-100 text-gray-700"}`}>{row.type}</span> },
     { key: "weight", label: "Weight", width: "w-[8%]", render: (row) => <span className="text-sm font-medium">{row.weight} kg</span> },
-    { key: "expiry", label: "Expiry Date", width: "w-[13%]", render: (row) => { const expired = isExpired(row.expiry); return <span className={`text-sm ${expired ? "text-red-500 font-medium" : "text-gray-600"}`}>{row.expiry}{expired && " ⚠️"}</span>; } },
+    { key: "expiry", label: "Expiry Date", width: "w-[13%]", render: (row) => { const expired = isExpired(row.expiry); const urgency = getExpiryUrgency(row.expiry, row.status === "PENDING"); const UrgencyIcon = urgency?.Icon; return <div className="flex flex-col items-start gap-1"><span className={`text-sm ${expired ? "font-medium text-red-700" : "text-gray-600"}`}>{row.expiry || "N/A"}</span>{urgency && <span title={urgency.title} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${urgency.style}`}><UrgencyIcon size={12} aria-hidden="true" />{urgency.label}</span>}</div>; } },
     { key: "donorName", label: "Donor", width: "w-[15%]" },
     { key: "centerLocation", label: "Center", width: "w-[15%]" },
     {
@@ -319,6 +340,12 @@ const WasteItemsPage = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6"><div><h2 className="text-2xl font-bold text-gray-800">{isDonor ? "Donate Waste" : isOperator ? "Food Waste Operations" : "Waste Items"}</h2><p className="text-sm text-gray-500 mt-1">{isDonor ? "Submit a food donation for collection." : isOperator ? "Donors send waste to a collection center. Operators accept or reject it before dispatching to the processor." : "Track and manage all food waste items"}</p></div>{canAddWaste && <button onClick={() => setAddOpen(true)} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm">{isDonor ? "+ Donate Waste Item" : "+ Add Waste Item"}</button>}</div>
+      {!isDonor && <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-y border-gray-200 py-3">
+        <div className="inline-flex rounded-md border border-gray-300 p-0.5" role="group" aria-label="Waste item view">
+          <button type="button" aria-pressed={!showFefoQueue} onClick={() => setShowFefoQueue(false)} className={`rounded px-3 py-1.5 text-sm ${!showFefoQueue ? "bg-gray-800 text-white" : "text-gray-600 hover:bg-gray-50"}`}>All items</button>
+          <button type="button" aria-pressed={showFefoQueue} onClick={() => setShowFefoQueue(true)} className={`rounded px-3 py-1.5 text-sm ${showFefoQueue ? "bg-gray-800 text-white" : "text-gray-600 hover:bg-gray-50"}`}>FEFO queue</button>
+        </div>
+      </div>}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"><StatCard label="Total Items" value={items.length} icon="🗃️" color="blue" /><StatCard label="Total Weight" value={`${parseFloat(totalWeight.toFixed(2))} kg`} icon="⚖️" color="green" /><StatCard label="Pending" value={pendingItems} icon="⏳" color="yellow" /><StatCard label="Processed" value={items.length - pendingItems} icon="✅" color="green" /></div>
       {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}</span><button onClick={loadItems} className="ml-4 font-semibold underline">Retry</button></div>}
       <WasteFilters filters={filters} onChange={(key, value) => setFilters((previous) => ({ ...previous, [key]: value }))} onReset={() => setFilters(DEFAULT_FILTERS)} />
@@ -331,6 +358,7 @@ const WasteItemsPage = () => {
           donors={donors}
           centers={isDonor ? (centers.filter((center) => donorAssignedCenters.includes(center.id))) : centers}
           defaultDonorId={isDonor ? currentDonorId : ""}
+          allowAutoAssign={isDonor}
         />
       )}
       {canEditWaste && (

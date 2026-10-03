@@ -28,6 +28,14 @@ const isProcessedToday = (item) => {
   return isToday(item.processedAt || item.createdAt);
 };
 
+const daysUntilExpiry = (expirationDate) => {
+  if (!expirationDate) return null;
+  const [year, month, day] = expirationDate.split("-").map(Number);
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return (Date.UTC(year, month - 1, day) - todayUtc) / 86400000;
+};
+
 const RoleBadge = ({ role }) => (
   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${ROLE_STYLES[role] || "bg-gray-100 text-gray-700"}`}>
     {role}
@@ -115,12 +123,24 @@ const Dashboard = () => {
     const readyDispatch = wasteItems.filter((item) => item.accepted && !item.rejected && !item.dispatched && !item.processed).length;
     const processing = wasteItems.filter((item) => item.dispatched && !item.processed && !item.rejected).length;
     const rejected = wasteItems.filter((item) => item.rejected).length;
-    const nearExpiry = wasteItems.filter((item) => {
-      if (!item.accepted || item.rejected || item.dispatched || item.processed || !item.expirationDate) return false;
-      const days = Math.ceil((new Date(`${item.expirationDate}T00:00:00`) - new Date()) / 86400000);
-      return days >= 0 && days <= 3;
-    }).length;
-    return { pendingReview, readyDispatch, processing, rejected, nearExpiry };
+    const nearExpiryItems = wasteItems.filter((item) => {
+      if (item.rejected || item.processed) return false;
+      const days = daysUntilExpiry(item.expirationDate);
+      return days !== null && days >= 0 && days <= 3;
+    });
+    const nearExpiryPending = nearExpiryItems.filter((item) => !item.accepted && !item.dispatched).length;
+    const nearExpiryReady = nearExpiryItems.filter((item) => item.accepted && !item.dispatched).length;
+    const nearExpiryProcessing = nearExpiryItems.filter((item) => item.dispatched).length;
+    return {
+      pendingReview,
+      readyDispatch,
+      processing,
+      rejected,
+      nearExpiry: nearExpiryItems.length,
+      nearExpiryPending,
+      nearExpiryReady,
+      nearExpiryProcessing,
+    };
   }, [wasteItems]);
 
   const donorCenterIds = useMemo(() => {
@@ -335,7 +355,12 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <MetricCard icon={<FiClock className="text-amber-600" size={22} />} label="Awaiting Review" value={loading ? "..." : workflowStats.pendingReview} />
           <MetricCard icon={<FiTruck className="text-green-600" size={22} />} label="Ready to Dispatch" value={loading ? "..." : workflowStats.readyDispatch} />
-          <MetricCard icon={<FiAlertTriangle className="text-red-600" size={22} />} label="Near Expiry" value={loading ? "..." : workflowStats.nearExpiry} />
+          <MetricCard
+            icon={<FiAlertTriangle className="text-red-600" size={22} />}
+            label="Near Expiry · Next 3 Days"
+            value={loading ? "..." : workflowStats.nearExpiry}
+            detail={loading ? "" : `Review ${workflowStats.nearExpiryPending} · Ready ${workflowStats.nearExpiryReady} · Processing ${workflowStats.nearExpiryProcessing}`}
+          />
           <MetricCard icon={<FiActivity className="text-blue-600" size={22} />} label="Processing" value={loading ? "..." : workflowStats.processing} />
           <MetricCard icon={<FiCheckCircle className="text-purple-600" size={22} />} label="Processed Today" value={loading ? "..." : itemsProcessedToday} />
         </div>
@@ -373,12 +398,13 @@ const Dashboard = () => {
   );
 };
 
-const MetricCard = ({ icon, label, value }) => (
+const MetricCard = ({ icon, label, value, detail }) => (
   <div className="bg-white shadow rounded p-5 flex items-center gap-4">
     <div className="bg-gray-100 p-3 rounded-full">{icon}</div>
-    <div>
+    <div className="min-w-0">
       <p className="text-2xl font-bold">{value}</p>
       <p className="text-gray-500 text-sm">{label}</p>
+      {detail && <p className="mt-1 text-[11px] leading-tight text-gray-500">{detail}</p>}
     </div>
   </div>
 );

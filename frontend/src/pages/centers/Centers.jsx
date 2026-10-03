@@ -73,6 +73,7 @@ const Centers = ({ dispatchOnly = false }) => {
   const [targetCenter, setTargetCenter] = useState(null);
   const [targetItem, setTargetItem] = useState(null);
   const [dispatchStatus, setDispatchStatus] = useState("ALL");
+  const [dispatchCenterName, setDispatchCenterName] = useState("");
 
   const navigate = useNavigate();
   const canManageCenters = hasRole("ROLE_ADMIN") || hasRole("ROLE_OPERATOR");
@@ -133,9 +134,15 @@ const Centers = ({ dispatchOnly = false }) => {
   const totalLoad = Number(centers.reduce((s, c) => s + c.currentLoad, 0).toFixed(2));
   const totalCapacity = Number(centers.reduce((s, c) => s + c.maxCapacity, 0).toFixed(2));
   const visibleCenters = useMemo(() => {
-    if (!dispatchOnly || dispatchStatus === "ALL") return centers;
-    return centers.filter((center) => center.wasteItems.some((item) => item.status === dispatchStatus));
-  }, [centers, dispatchOnly, dispatchStatus]);
+    const nameQuery = dispatchCenterName.trim().toLowerCase();
+    return centers.filter((center) => {
+      if (!String(center.name || "").toLowerCase().includes(nameQuery)) return false;
+      if (!dispatchOnly) return true;
+      return Boolean(center.processorName)
+        && center.wasteItems.some((item) => item.status === "ACCEPTED")
+        && (dispatchStatus === "ALL" || center.wasteItems.some((item) => item.status === dispatchStatus));
+    });
+  }, [centers, dispatchOnly, dispatchStatus, dispatchCenterName]);
 
   // ── Handlers ──
   const handleAdd = async (newCenter) => {
@@ -293,7 +300,13 @@ const Centers = ({ dispatchOnly = false }) => {
         <StatCard label="Total Capacity (kg)" value={formatMetric(totalCapacity)} icon="📊" color="green" />
       </div>
 
-      {dispatchOnly && <DispatchWasteFilters value={dispatchStatus} onChange={setDispatchStatus} />}
+      <DispatchWasteFilters
+        value={dispatchStatus}
+        onChange={setDispatchStatus}
+        centerName={dispatchCenterName}
+        onCenterNameChange={setDispatchCenterName}
+        showStatus={dispatchOnly}
+      />
 
       {error && (
         <div className="mb-4 flex items-center justify-between rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">

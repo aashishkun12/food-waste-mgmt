@@ -29,7 +29,8 @@ api.interceptors.response.use(
     (response) => response.data,
     (error) => {
         const status  = error.response?.status;
-        const message = error.response?.data?.message || error.message || "Something went wrong";
+        const responseData = error.response?.data;
+        const message = responseData?.message || error.message || "Something went wrong";
 
         // Only redirect on 401 if NOT already on login page
         // otherwise wrong password would redirect and swallow the error
@@ -39,7 +40,9 @@ api.interceptors.response.use(
             window.location.href = "/login";
         }
 
-        return Promise.reject(new Error(message));
+        const apiError = new Error(message);
+        apiError.fieldErrors = responseData?.fieldErrors || {};
+        return Promise.reject(apiError);
     }
 );
 

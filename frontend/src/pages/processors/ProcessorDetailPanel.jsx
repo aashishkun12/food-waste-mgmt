@@ -89,17 +89,19 @@ const ProcessorDetailPanel = ({ processor, onClose, onCompleteProcessing }) => {
               <p className="text-sm text-gray-400">No dispatched waste is waiting for processing.</p>
             ) : (
               <div className="space-y-2">
-                {processor.processingItems.map((item) => (
-                  <div key={item.id} className="border rounded-lg p-3 bg-gray-50 flex items-center justify-between gap-3">
+                {processor.processingItems.map((item, index) => (
+                  <div key={item.id} className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${index === 0 ? "border-amber-300 bg-amber-50" : "bg-gray-50"}`}>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{item.wasteType} · {Number(item.weightKg || 0).toFixed(2)} kg</p>
+                      <p className="text-sm font-medium text-gray-800">{item.wasteType} · {Number(item.weightKg || 0).toFixed(2)} kg{index === 0 && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Next by expiry</span>}</p>
                       <p className="text-xs text-gray-500 mt-0.5">Expiry: {item.expirationDate || "N/A"}</p>
                     </div>
                     <button
                       onClick={() => onCompleteProcessing(item.id)}
-                      className="px-3 py-1.5 rounded bg-green-600 text-white text-xs font-medium hover:bg-green-700"
+                      disabled={index !== 0}
+                      title={index === 0 ? "Complete the earliest-expiring item" : "Complete earlier-expiring items first"}
+                      className="shrink-0 rounded bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                     >
-                      Mark Processed
+                      {index === 0 ? "Mark Processed" : "Wait"}
                     </button>
                   </div>
                 ))}

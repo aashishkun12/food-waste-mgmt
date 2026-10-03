@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   createProcessor,
   deleteProcessor,
@@ -31,7 +31,8 @@ const normalizeProcessor = (processor, centers = [], wasteItems = []) => {
     .reduce((sum, item) => sum + Number(item.weightKg || 0), 0);
   const processingItems = wasteItems.filter(
     (item) => item.dispatched && !item.processed && centerIds.has(item.collectionCenterId)
-  );
+  ).sort((first, second) => String(first.expirationDate || "9999-12-31")
+    .localeCompare(String(second.expirationDate || "9999-12-31")) || first.id - second.id);
 
   return {
     ...processor,
@@ -59,6 +60,8 @@ const ProcessorsPage = () => {
   const [error, setError] = useState("");
   const [selectedProcessor, setSelectedProcessor] = useState(null);
   const [targetProcessor, setTargetProcessor]     = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [queueFilter, setQueueFilter] = useState("ALL");
 
   const [addOpen, setAddOpen]       = useState(false);
   const [editOpen, setEditOpen]     = useState(false);
@@ -104,6 +107,23 @@ const ProcessorsPage = () => {
   const totalLoad       = Number(processors.reduce((s, p) => s + p.currentLoad, 0).toFixed(2));
   const totalProcessed  = Number(processors.reduce((s, p) => s + p.totalProcessed, 0).toFixed(2));
   const nearFull        = processors.filter((p) => p.currentLoad / p.maxCapacity >= 0.8).length;
+  const visibleProcessors = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return processors
+      .filter((processor) => {
+        const matchesSearch = `${processor.name} ${processor.location}`.toLowerCase().includes(query);
+        const hasWaitingItems = processor.processingItems.length > 0;
+        const matchesQueue = queueFilter === "ALL"
+          || (queueFilter === "WAITING" && hasWaitingItems)
+          || (queueFilter === "IDLE" && !hasWaitingItems);
+        return matchesSearch && matchesQueue;
+      })
+      .sort((first, second) => {
+        const firstExpiry = first.processingItems[0]?.expirationDate || "9999-12-31";
+        const secondExpiry = second.processingItems[0]?.expirationDate || "9999-12-31";
+        return firstExpiry.localeCompare(secondExpiry) || first.name.localeCompare(second.name);
+      });
+  }, [processors, searchTerm, queueFilter]);
 
   // ── Handlers ──
   const handleAdd = async (newProcessor) => {
@@ -140,14 +160,25 @@ const ProcessorsPage = () => {
 
   // ── Table columns ──
   const columns = [
-    { key: "name",     label: "Name", width: "w-44" },
-    { key: "location", label: "Location", width: "w-28" },
+    { key: "name",     label: "Name", width: "w-[14%]" },
+    { key: "location", label: "Location", width: "w-[11%]" },
+    {
+      key: "nextExpiry",
+      label: "Next Expiry",
+      width: "w-[15%]",
+      render: (row) => row.processingItems.length > 0 ? (
+        <div>
+          <p className="text-sm font-semibold text-amber-800">{row.processingItems[0].expirationDate || "Date unavailable"}</p>
+          <p className="text-xs text-gray-500">{row.processingItems.length} item{row.processingItems.length === 1 ? "" : "s"} waiting</p>
+        </div>
+      ) : <span className="text-sm text-gray-400">No waiting items</span>,
+    },
     {
       key: "capacity",
-      label: "Current Load / Max Capacity",
-      width: "w-56",
+      label: "Load / Capacity",
+      width: "w-[19%]",
       render: (row) => (
-        <div className="min-w-[190px]">
+        <div className="min-w-0">
           <CapacityBar current={row.currentLoad} max={row.maxCapacity} />
         </div>
       ),
@@ -155,7 +186,7 @@ const ProcessorsPage = () => {
     {
       key: "status",
       label: "Status",
-      width: "w-28",
+      width: "w-[9%]",
       render: (row) => {
         const s = getStatus(row.currentLoad, row.maxCapacity);
         return (
@@ -168,7 +199,7 @@ const ProcessorsPage = () => {
     {
       key: "totalProcessed",
       label: "Total Processed",
-      width: "w-32",
+      width: "w-[12%]",
       render: (row) => (
         <span className="text-sm font-medium text-gray-700">{Number(row.totalProcessed || 0).toFixed(2)} kg</span>
       ),
@@ -176,7 +207,7 @@ const ProcessorsPage = () => {
     {
       key: "centers",
       label: "Centers",
-      width: "w-24",
+      width: "w-[8%]",
       render: (row) => (
         <span className="text-sm text-gray-600">
           {row.centers?.length || 0} center{row.centers?.length !== 1 ? "s" : ""}
@@ -186,7 +217,7 @@ const ProcessorsPage = () => {
     {
       key: "actions",
       label: "Actions",
-      width: "w-44",
+      width: "w-[12%]",
       render: (row) => (
         <div className="flex flex-wrap items-center gap-1">
           <button
@@ -252,8 +283,36 @@ const ProcessorsPage = () => {
         </div>
       )}
 
+      <div className="mb-4 flex flex-wrap items-end gap-3 border-y border-gray-200 py-3">
+        <div className="flex min-w-56 flex-1 flex-col gap-1">
+          <label htmlFor="processor-search" className="text-xs font-medium text-gray-600">Find processor</label>
+          <input
+            id="processor-search"
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search name or location"
+            className="rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-green-600 focus:outline-none"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="processor-queue-filter" className="text-xs font-medium text-gray-600">Processing queue</label>
+          <select
+            id="processor-queue-filter"
+            value={queueFilter}
+            onChange={(event) => setQueueFilter(event.target.value)}
+            className="rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-green-600 focus:outline-none"
+          >
+            <option value="ALL">All processors</option>
+            <option value="WAITING">Has waiting items</option>
+            <option value="IDLE">No waiting items</option>
+          </select>
+        </div>
+        <p className="pb-2 text-xs text-gray-500">Processors are ordered by the soonest expiry.</p>
+      </div>
+
       {/* Table */}
-      {loading ? <p className="text-gray-500">Loading processors...</p> : <PaginatedTable columns={columns} data={processors} pageSize={5} />}
+      {loading ? <p className="text-gray-500">Loading processors...</p> : <PaginatedTable columns={columns} data={visibleProcessors} pageSize={5} />}
 
       {/* Detail Panel */}
       <ProcessorDetailPanel
