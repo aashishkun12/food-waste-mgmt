@@ -108,7 +108,7 @@ public class FoodWasteItemController {
 
     // Greedy auto-assign (no centerId needed in body)
     @PostMapping("/auto-assign")
-    @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
+    @PreAuthorize("hasRole('DONOR')")
     public ResponseEntity<FoodWasteItemResponse> createWithAutoAssign(
             @Valid @RequestBody AutoAssignFoodWasteItemRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
