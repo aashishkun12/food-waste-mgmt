@@ -132,11 +132,11 @@ public class CollectionCenterService {
         // earliest expiring items are dispatched first
         Queue<FoodWasteItems> queue = new PriorityQueue<>(
                 Comparator.comparing(FoodWasteItems::getExpirationDate)
+                        .thenComparing(FoodWasteItems::getId)
         );
-//        queue.addAll(itemRepo.findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalse(centerId));
-//        List<FoodWasteItems> approvedItems = itemRepo
-//                .findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalseOrderByExpirationDateAsc(
-//                        centerId);
+        queue.addAll(itemRepo
+                .findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalseAndProcessedFalseOrderByExpirationDateAscIdAsc(
+                        centerId));
 
         if (queue.isEmpty())
             return "No accepted items ready to dispatch at '"
@@ -199,14 +199,22 @@ public class CollectionCenterService {
 
             Queue<FoodWasteItems> queue = new PriorityQueue<>(
                     Comparator.comparing(FoodWasteItems::getExpirationDate)
+                            .thenComparing(FoodWasteItems::getId)
             );
-            queue.addAll(itemRepo.findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalse(centerId));
+            queue.addAll(itemRepo
+                            .findByCollectionCentre_IdAndAcceptedTrueAndRejectedFalseAndDispatchedFalseAndProcessedFalseOrderByExpirationDateAscIdAsc(
+                                            centerId));
 
 
             if (queue.isEmpty()) {
                 return "No accepted items ready to dispatch at this center.";
             }
-            FoodWasteItems item = queue.poll(); // FEFO dequeue
+                        FoodWasteItems item = queue.peek();
+                        if (!item.getId().equals(itemId)) {
+                                throw new ValidationException("Dispatch waste in earliest-expiry order. Item "
+                                                                + item.getId() + " expires first.");
+                        }
+                        queue.poll(); // FEFO dequeue
             Processors processor = loadBalancer.findBestProcessor(item.getWeightKg());
 
 //                if (item.getCollectionCentre() == null
@@ -228,16 +236,21 @@ public class CollectionCenterService {
 
     private void mapFields(CollectionCentres c,
                            CollectionCenterRequest req) {
+        if (req.getProcessorId() != null) {
+            Processors processor = processorRepo.findById(req.getProcessorId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Processor not found: " + req.getProcessorId()));
+            if (req.getMaxCapacityKg() > processor.getMaxProcessingCapicityKg()) {
+                throw new ValidationException(
+                        "Collection center capacity cannot exceed its assigned processor capacity ("
+                                + processor.getMaxProcessingCapicityKg() + " kg).");
+            }
+            c.setProcessor(processor);
+        }
+
         c.setName(req.getName());
         c.setLocation(req.getLocation());
         c.setMaxCapicityKg(req.getMaxCapacityKg());
-
-        if (req.getProcessorId() != null) {
-            c.setProcessor(processorRepo.findById(req.getProcessorId())
-                    .orElseThrow(() -> new ResourceNotFoundException(
-                            "Processor not found: "
-                                    + req.getProcessorId())));
-        }
     }
 
     public CollectionCentres getCenter(Long id) {
