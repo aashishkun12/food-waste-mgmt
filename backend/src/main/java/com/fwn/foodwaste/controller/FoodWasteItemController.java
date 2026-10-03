@@ -77,7 +77,7 @@ public class FoodWasteItemController {
     }
 
     @PatchMapping("/{id}/accept")
-    @PostMapping("/{id}/accept")
+//    @PostMapping("/{id}/accept")
     @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     public ResponseEntity<FoodWasteItemResponse> acceptWaste(
             @PathVariable Long id) {
@@ -85,7 +85,7 @@ public class FoodWasteItemController {
     }
 
     @PatchMapping("/{id}/reject")
-    @PostMapping("/{id}/reject")
+//    @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN','OPERATOR')")
     public ResponseEntity<FoodWasteItemResponse> rejectWaste(
             @PathVariable Long id) {
