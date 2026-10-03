@@ -14,6 +14,7 @@ const Signup = () => {
         register,
         handleSubmit,
         watch,
+        setError,
         formState: { errors },
         reset,
     } = useForm();
@@ -38,7 +39,7 @@ const Signup = () => {
                 if (!cleanedPhone || cleanedPhone.length !== 10) {
                     throw new Error("Phone number must be exactly 10 digits.");
                 }
-                payload.donorName = userData.donorName;
+                payload.name = userData.donorName;
                 payload.address = userData.address;
                 payload.phone = cleanedPhone;
             }
@@ -56,7 +57,14 @@ const Signup = () => {
                 localStorage.setItem("wfms_token", registeredUser.token);
             }
         } catch (error) {
-            setApiError(error.message || "Registration failed. Please try again.");
+            const fieldNames = { name: "donorName" };
+            const fieldErrors = error.fieldErrors || {};
+            Object.entries(fieldErrors).forEach(([fieldName, message]) => {
+                setError(fieldNames[fieldName] || fieldName, { type: "server", message });
+            });
+            setApiError(Object.keys(fieldErrors).length
+                ? "Please correct the highlighted fields and try again."
+                : error.message || "Registration failed. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -202,7 +210,8 @@ const Signup = () => {
                                 {...register("username", {
                                     required: "Username is required",
                                     minLength: { value: 3, message: "Min 3 characters" },
-                                    pattern: { value: /^[A-Za-z0-9_]+$/, message: "No spaces or symbols" },
+                                    maxLength: { value: 30, message: "Max 30 characters" },
+                                    pattern: { value: /^(?=.*[A-Za-z])[A-Za-z0-9_-]+$/, message: "Use letters, numbers, _ or -; include at least one letter" },
                                 })}
                             />
                             <div className={isDonor ? "h-3 mt-0" : "h-3.5 mt-0.5"}>
@@ -238,7 +247,12 @@ const Signup = () => {
                                         placeholder="Your donor name"
                                         disabled={!!successMessage || isLoading}
                                         className={`w-full rounded-md border bg-white px-3 py-1 text-sm disabled:opacity-60 ${errors.donorName ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
-                                        {...register("donorName", { required: "Donor name is required" })}
+                                        {...register("donorName", {
+                                            required: "Donor name is required",
+                                            minLength: { value: 2, message: "Name must be at least 2 characters" },
+                                            maxLength: { value: 100, message: "Name must be at most 100 characters" },
+                                            pattern: { value: /^[A-Za-z ]+$/, message: "Name can only contain letters and spaces" },
+                                        })}
                                     />
                                     {errors.donorName && <p className="text-xs text-[#B5402F] mt-0">{errors.donorName.message}</p>}
                                 </div>
@@ -250,7 +264,12 @@ const Signup = () => {
                                         placeholder="Your address"
                                         disabled={!!successMessage || isLoading}
                                         className={`w-full rounded-md border bg-white px-3 py-1 text-sm disabled:opacity-60 ${errors.address ? "border-[#B5402F]" : "border-[#D9D4C3]"}`}
-                                        {...register("address", { required: "Address is required" })}
+                                        {...register("address", {
+                                            required: "Address is required",
+                                            minLength: { value: 5, message: "Address must be at least 5 characters" },
+                                            maxLength: { value: 255, message: "Address must be at most 255 characters" },
+                                            pattern: { value: /^[A-Za-z0-9\s,.-]+$/, message: "Use letters, numbers, spaces, commas, hyphens or dots" },
+                                        })}
                                     />
                                     {errors.address && <p className="text-xs text-[#B5402F] mt-0">{errors.address.message}</p>}
                                 </div>
@@ -267,7 +286,7 @@ const Signup = () => {
                                             required: "Phone number is required",
                                             validate: (value) => {
                                                 const digits = String(value || "").replace(/\D/g, "");
-                                                return !digits || digits.length === 10 || "Enter a valid 10-digit phone number";
+                                                return digits.length === 10 || "Enter a valid 10-digit phone number";
                                             },
                                             onChange: (e) => {
                                                 const digits = String(e.target.value || "").replace(/\D/g, "").slice(0, 10);
@@ -292,7 +311,6 @@ const Signup = () => {
                                 {...register("password", {
                                     required: "Password is required",
                                     minLength: { value: 8, message: "Min 8 characters" },
-                                    pattern: { value: /^(?=.*[A-Za-z])(?=.*\d).+$/, message: "Add a letter and a number" },
                                 })}
                             />
                             <div className={isDonor ? "h-3 mt-0" : "h-3.5 mt-0.5"}>

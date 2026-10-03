@@ -30,6 +30,17 @@ export const createWasteItem = (item) =>
     "Failed to add waste item."
   );
 
+export const autoAssignWasteItem = (item) =>
+  request(
+    api.post(`${WASTE_ENDPOINT}/auto-assign`, {
+      weightKg: item.weight,
+      expirationDate: item.expiry,
+      wasteType: item.type,
+      donorId: item.donorId,
+    }),
+    "Failed to auto-assign waste item."
+  );
+
 export const updateWasteItem = (item) =>
   request(
     api.put(`${WASTE_ENDPOINT}/${item.id}`, {

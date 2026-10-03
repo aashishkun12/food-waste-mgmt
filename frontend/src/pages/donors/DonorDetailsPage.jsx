@@ -50,18 +50,20 @@ const DonorDetailsPage = () => {
 
   const selectedDonations = donations.filter((item) => Number(item.donorId) === Number(selectedDonor?.id));
   const columns = [
-    { key: "name", label: "Name" },
-    { key: "address", label: "Address" },
-    { key: "contactEmail", label: "Email" },
-    { key: "contactPhone", label: "Phone" },
+    { key: "name", label: "Name", width: "w-[16%]" },
+    { key: "address", label: "Address", width: "w-[20%]" },
+    { key: "contactEmail", label: "Email", width: "w-[25%]", render: (donor) => <span className="block w-full truncate whitespace-nowrap" title={donor.contactEmail}>{donor.contactEmail || "-"}</span> },
+    { key: "contactPhone", label: "Phone", width: "w-[16%]", render: (donor) => <span className="block w-full whitespace-nowrap" title={donor.contactPhone}>{donor.contactPhone || "-"}</span> },
     {
       key: "totalDonations",
       label: "Donations",
+      width: "w-[11%]",
       render: (donor) => donations.filter((item) => Number(item.donorId) === Number(donor.id)).length,
     },
     {
       key: "actions",
       label: "Actions",
+      width: "w-[12%]",
       render: (donor) => <button type="button" onClick={() => setSelectedDonor(donor)} className="rounded bg-blue-500 px-3 py-1 text-xs text-white hover:bg-blue-600">View</button>,
     },
   ];
