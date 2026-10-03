@@ -5,7 +5,9 @@ import com.fwn.foodwaste.dto.Request.FoodWasteItemRequest;
 import com.fwn.foodwaste.dto.Response.FoodWasteItemResponse;
 import com.fwn.foodwaste.entity.CollectionCentres;
 import com.fwn.foodwaste.entity.FoodWasteItems;
+import com.fwn.foodwaste.entity.Processors;
 import com.fwn.foodwaste.entity.User;
+import com.fwn.foodwaste.entity.enums.WasteType;
 import com.fwn.foodwaste.exception.CapacityExceededException;
 import com.fwn.foodwaste.exception.ResourceNotFoundException;
 import com.fwn.foodwaste.exception.ValidationException;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,9 +33,40 @@ import java.util.stream.Collectors;
 public class FoodWasteItemService {
     private final GreedyCollectionCenterService greedyService;
     private final FoodWasteItemRepository itemRepo;
-        private final UserRepository donorRepo;
+    private final UserRepository donorRepo;
     private final CollectionCenterRepository centerRepo;
-        private final ProcessorRepository processorRepo;
+    private final ProcessorRepository processorRepo;
+
+
+    // ADD this map as a constant at the top of the class
+// Key = WasteType, Value = maximum allowed days until expiration
+    private static final Map<WasteType, Integer> MAX_EXPIRY_DAYS = Map.of(
+            WasteType.VEGETABLES,  7,    // vegetables expire in max 7 days
+            WasteType.MEAT,        5,    // meat expires in max 5 days
+            WasteType.DAIRY,       10,   // dairy expires in max 10 days
+            WasteType.FRUITS,      7,    // fruits expire in max 7 days
+            WasteType.GRAINS,      180,  // grains can last 6 months
+            WasteType.BEVERAGES,   90,   // beverages last 3 months
+            WasteType.OTHER,       30    // default 30 days for unknown
+    );
+
+    private void validateExpirationDateForWasteType(
+            WasteType wasteType, LocalDate expirationDate) {
+
+        long daysUntilExpiry = ChronoUnit.DAYS.between(
+                LocalDate.now(), expirationDate);
+
+        Integer maxDays = MAX_EXPIRY_DAYS.get(wasteType);
+
+        if (maxDays != null && daysUntilExpiry > maxDays) {
+            throw new ValidationException(
+                    "Expiration date is not realistic for waste type '"
+                            + wasteType + "'. "
+                            + "Maximum allowed days until expiry: " + maxDays
+                            + " days. You entered: " + daysUntilExpiry + " days.");
+        }
+    }
+
 
     @Transactional(readOnly = true)
     public List<FoodWasteItemResponse> findAll() {
@@ -78,6 +112,8 @@ public class FoodWasteItemService {
                         "Collection center not found: "
                                 + req.getCollectionCenterId()));
 
+        validateExpirationDateForWasteType(req.getWasteType(),
+                req.getExpirationDate());
         // capacity check
         if (activeCenterLoad(center) + req.getWeightKg() > center.getMaxCapicityKg())
             throw new CapacityExceededException(
@@ -190,9 +226,11 @@ public class FoodWasteItemService {
                         throw new ValidationException("Only accepted and dispatched waste can be marked as processed.");
                 }
                 item.setProcessed(true);
-                if (item.getCollectionCentre() != null && item.getCollectionCentre().getProcessor() != null) {
-                        var processor = item.getCollectionCentre().getProcessor();
-                        processor.setCurrentLoadKg(Math.max(0.0, processor.getCurrentLoadKg() - item.getWeightKg()));
+                // using the processor that is actually assigned
+                if (item.getProcessor() != null ) {
+                        Processors processor = item.getProcessor();
+                        processor.setCurrentLoadKg(Math.max(0.0,
+                                processor.getCurrentLoadKg() - item.getWeightKg()));
                         processorRepo.save(processor);
                 }
                 return toResponse(itemRepo.save(item));
@@ -241,18 +279,24 @@ public class FoodWasteItemService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Donor not found: " + req.getDonorId()));
 
+        validateExpirationDateForWasteType(req.getWasteType(),
+                req.getExpirationDate());
+
         FoodWasteItems item = FoodWasteItems.builder()
                 .weightKg(req.getWeightKg())
                 .expirationDate(req.getExpirationDate())
                 .wasteType(req.getWasteType())
                 .processed(false)
+                .accepted(false)
+                .rejected(false)
+                .dispatched(false)
                 .donor(donor)
                 .collectionCentre(bestCenter)
                 .build();
-
-        bestCenter.setCurrentLoadKg(
-                bestCenter.getCurrentLoadKg() + req.getWeightKg());
-        centerRepo.save(bestCenter);
+// item starts as accepted = false so it should NOT count toward the active center load yet. The load updates when the operator calls accept()
+//        bestCenter.setCurrentLoadKg(
+//                bestCenter.getCurrentLoadKg() + req.getWeightKg());
+//        centerRepo.save(bestCenter);
 
         return toResponse(itemRepo.save(item));
     }

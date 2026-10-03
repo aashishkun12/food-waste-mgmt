@@ -37,7 +37,7 @@ public class GreedyCollectionCenterService {
                 // only centers that physically fit the item
                 .filter(c -> c.hasCapacity(weightKg))
                 // greedy pick — most free space wins
-                .max(Comparator.comparingDouble(
+                .min(Comparator.comparingDouble(
                         c -> c.getMaxCapicityKg() - c.getCurrentLoadKg()))
                 .orElseThrow(() -> new CapacityExceededException(
                         "No collection center has enough capacity "
