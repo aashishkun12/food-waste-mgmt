@@ -20,7 +20,7 @@ const NavBar = () => {
         <Link to="/" className="flex items-center gap-2">
           <span className="text-xl">🌱</span>
           <span className="font-bold text-green-800 text-base tracking-tight">
-            FoodWaste MS
+            FoodWaste
           </span>
         </Link>
 
